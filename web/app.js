@@ -1,39 +1,31 @@
-/* NILORA web — passport first. Data mirrors the Android models
-   (app/src/main/java/com/example/ui/passport/PassportModels.kt). */
-
-const CITIES = [
-  { id: 'cairo', en: 'Cairo', ar: 'القاهرة', glyph: '🕌', lat: 30.0444, lon: 31.2357 },
-  { id: 'giza', en: 'Giza', ar: 'الجيزة', glyph: '🔺', lat: 30.0131, lon: 31.2089 },
-  { id: 'alexandria', en: 'Alexandria', ar: 'الإسكندرية', glyph: '⚓', lat: 31.2001, lon: 29.9187 },
-  { id: 'sharm_el_sheikh', en: 'Sharm El Sheikh', ar: 'شرم الشيخ', glyph: '🤿', lat: 27.9158, lon: 34.3299 },
-  { id: 'hurghada', en: 'Hurghada', ar: 'الغردقة', glyph: '🐠', lat: 27.2579, lon: 33.8116 },
-  { id: 'dahab', en: 'Dahab', ar: 'دهب', glyph: '🐪', lat: 28.5092, lon: 34.5136 },
-  { id: 'marsa_alam', en: 'Marsa Alam', ar: 'مرسى علم', glyph: '🐬', lat: 25.0676, lon: 34.879 },
-  { id: 'luxor', en: 'Luxor', ar: 'الأقصر', glyph: '🏛️', lat: 25.6872, lon: 32.6396 },
-  { id: 'aswan', en: 'Aswan', ar: 'أسوان', glyph: '⛵', lat: 24.0889, lon: 32.8998 },
-  { id: 'el_gouna', en: 'El Gouna', ar: 'الجونة', glyph: '🌅', lat: 27.3942, lon: 33.6782 },
-  { id: 'siwa', en: 'Siwa', ar: 'سيوة', glyph: '🌴', lat: 29.2032, lon: 25.5196 },
-  { id: 'north_coast', en: 'North Coast', ar: 'الساحل الشمالي', glyph: '🏖️', lat: 30.93, lon: 28.95 },
-];
+/* NILORA web — passport, live map, missions. Data in data.js (COUNTRIES, ALL_CITIES, TOTAL_STAMPS). */
 
 const LEVELS = [
   { min: 0,  en: 'Newcomer',   ar: 'وافد جديد',  badge: '🌱' },
   { min: 1,  en: 'Explorer',   ar: 'مستكشف',     badge: '🧭' },
-  { min: 4,  en: 'Adventurer', ar: 'مغامر',      badge: '⛰️' },
-  { min: 8,  en: 'Nile Master',ar: 'سيّد النيل', badge: '👑' },
-  { min: 12, en: 'Global Soul',ar: 'روح العالم', badge: '🌍' },
+  { min: 5,  en: 'Adventurer', ar: 'مغامر',      badge: '⛰️' },
+  { min: 12, en: 'Nile Master',ar: 'سيّد النيل', badge: '👑' },
+  { min: 40, en: 'Global Soul',ar: 'روح العالم', badge: '🌍' },
+];
+
+const MISSION_POOL = [
+  { id: 'open_map',    pts: 10, ar: 'افتح الخريطة الحيّة',              en: 'Open the live map' },
+  { id: 'weather',     pts: 10, ar: 'اضغط على مدينة وشوف طقسها دلوقتي',  en: 'Tap a city and check its live weather' },
+  { id: 'story',       pts: 15, ar: 'اقرأ قصة من قصص البردي',            en: 'Read a papyrus story' },
+  { id: 'prayer',      pts: 10, ar: 'شوف مواقيت الصلاة على الخريطة',     en: 'Check prayer times on the map' },
+  { id: 'languages',   pts: 10, ar: 'بدّل بين العربي والإنجليزي',        en: 'Switch between Arabic and English' },
 ];
 
 const I18N = {
   ar: {
     dir: 'rtl', langBtn: 'EN',
     tabPassport: 'الجواز', tabMap: 'الخريطة', tabHara: 'الحارة', tabSouk: 'السوق',
-    heroSub: 'جواز سفرك المصري — الأختام تتجمع من أماكن حقيقية، مش من الشاشة',
+    heroSub: 'جواز سفرك للعالم — الأختام تتجمع من أماكن حقيقية، مش من الشاشة',
     stampsOf: (n, t) => `${n} من ${t} ختم`,
     nextLevel: (name, n) => n > 0 ? `باقي ${n} ${n === 1 ? 'ختم' : 'أختام'} لرتبة «${name}»` : 'وصلت لأعلى رتبة 🎉',
-    demo: 'عرض تجريبي للشكل', demoOn: 'العرض التجريبي شغال',
-    stampsTitle: 'أختام مصر', levelsTitle: 'الرتب',
-    levelReq: (n) => n === 0 ? 'البداية' : `${n} ${n === 1 ? 'ختم' : 'أختام'}`,
+    demo: 'الوضع التجريبي', demoOn: 'التجريبي شغال — دوس على أي ختم مقفول',
+    stampsTitle: 'الأختام', levelsTitle: 'الرتب',
+    levelReq: (n) => n === 0 ? 'البداية' : `${n}+`,
     earnedOn: (d) => `اتختّم ${d}`,
     mapTitle: 'الخريطة الحيّة',
     prayerTitle: 'أوقات الصلاة — القاهرة',
@@ -43,23 +35,27 @@ const I18N = {
     legendCities: 'مدن الجواز', legendQuakes: 'زلازل', legendStories: 'قصص بردي',
     readMore: 'اقرأ على ويكيبيديا', storiesLoading: 'بنجيب القصص…', noStories: 'مفيش قصص قريبة هنا — قرّب أو حرّك الخريطة',
     loading: 'بيحمّل…', mag: 'القوة',
-    mapBody: 'خريطة العالم ببيانات حيّة مجانية: الطقس، الزلازل، أوقات الصلاة، الأعياد، وقصص البردي المثبّتة على الأماكن. المراكب الشراعية وغرف الصوت على النيل جاية هنا كمان.',
-    haraTitle: 'الحارة المصرية',
+    mapBody: '', haraTitle: 'الحارة المصرية',
     haraBody: 'حارة افتراضية تلاقي فيها الناس: قهوة بلدي، صوت الطابية، وترجمة فورية على جهازك من غير ما كلامك يسيب موبايلك.',
     soukTitle: 'سوق التبادل',
     soukBody: 'بدّل قصة بقصة، وصنعة بصنعة. تبادل ثقافي حقيقي مع مسافرين من كل العالم — زي رسايل Bottled بس بالمصري.',
     comingSoon: 'قريبًا',
     tagline: 'روح العالم — بأصل مصري',
+    missionsTitle: 'مهام النهاردة', points: (p) => `${p} نقطة`, done: 'تم ✅',
+    rareTitle: 'ختم نادر', rareBody: 'الجعران الذهبي — اجمع ١٠٠ نقطة',
+    shareBtn: 'شارك جوازك', shareDone: 'اتنزّلت الصورة 🎉',
+    unlockTitle: 'ختم جديد!',
+    cities: (n) => `${n} مدينة`,
   },
   en: {
     dir: 'ltr', langBtn: 'عربي',
     tabPassport: 'Passport', tabMap: 'Map', tabHara: 'Hara', tabSouk: 'Souk',
-    heroSub: 'Your Egyptian passport — stamps are earned in real places, not on a screen',
+    heroSub: 'Your world passport — stamps are earned in real places, not on a screen',
     stampsOf: (n, t) => `${n} of ${t} stamps`,
     nextLevel: (name, n) => n > 0 ? `${n} more ${n === 1 ? 'stamp' : 'stamps'} to «${name}»` : 'Top level reached 🎉',
-    demo: 'Demo preview', demoOn: 'Demo preview on',
-    stampsTitle: 'Egypt stamps', levelsTitle: 'Ranks',
-    levelReq: (n) => n === 0 ? 'Start' : `${n} ${n === 1 ? 'stamp' : 'stamps'}`,
+    demo: 'Demo mode', demoOn: 'Demo on — tap any locked stamp',
+    stampsTitle: 'Stamps', levelsTitle: 'Ranks',
+    levelReq: (n) => n === 0 ? 'Start' : `${n}+`,
     earnedOn: (d) => `Stamped ${d}`,
     mapTitle: 'The live map',
     prayerTitle: 'Prayer times — Cairo',
@@ -69,30 +65,67 @@ const I18N = {
     legendCities: 'Passport cities', legendQuakes: 'Earthquakes', legendStories: 'Papyrus stories',
     readMore: 'Read on Wikipedia', storiesLoading: 'Finding stories…', noStories: 'No stories nearby — zoom in or move the map',
     loading: 'Loading…', mag: 'Mag',
-    mapBody: 'A world map fed by free live data: weather, earthquakes, prayer times, holidays, and papyrus stories pinned to real places. Nile sailboats and voice rooms land here too.',
-    haraTitle: 'The Egyptian hara',
+    mapBody: '', haraTitle: 'The Egyptian hara',
     haraBody: 'A virtual alley to meet people: a baladi café, backgammon sounds, and instant translation on your device — your words never leave your phone.',
     soukTitle: 'The exchange souk',
     soukBody: 'Trade a story for a story, a craft for a craft. Real cultural exchange with travelers worldwide — Bottled letters, Egyptian style.',
     comingSoon: 'Coming soon',
     tagline: 'Global soul — Egyptian origin',
+    missionsTitle: "Today's missions", points: (p) => `${p} pts`, done: 'Done ✅',
+    rareTitle: 'Rare stamp', rareBody: 'The Golden Scarab — collect 100 points',
+    shareBtn: 'Share your passport', shareDone: 'Image downloaded 🎉',
+    unlockTitle: 'New stamp!',
+    cities: (n) => `${n} cities`,
   },
 };
 
 const state = {
   lang: localStorage.getItem('nilora.lang') || 'ar',
   demo: localStorage.getItem('nilora.demo') === '1',
+  demoStamps: JSON.parse(localStorage.getItem('nilora.demoStamps') || '[]'),
+  points: parseInt(localStorage.getItem('nilora.points') || '0', 10),
 };
-
-// Demo mode lights up the first three stamps so the earned look is visible.
-function earnedCount() { return state.demo ? 3 : 0; }
-function levelFor(n) { return LEVELS.filter(l => n >= l.min).pop(); }
-function nextLevel(l) { const i = LEVELS.indexOf(l); return LEVELS[i + 1] || null; }
 
 function t() { return I18N[state.lang]; }
 
+function todayKey() { return new Date().toISOString().slice(0, 10); }
+
+function missionState() {
+  const raw = JSON.parse(localStorage.getItem('nilora.missions') || '{}');
+  return raw.day === todayKey() ? raw : { day: todayKey(), done: [] };
+}
+function saveMissions(m) { localStorage.setItem('nilora.missions', JSON.stringify(m)); }
+
+// Deterministic daily pick of 3 missions from the pool.
+function dailyMissions() {
+  let seed = 0;
+  for (const ch of todayKey()) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+  const pool = [...MISSION_POOL];
+  const picked = [];
+  while (picked.length < 3) {
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    picked.push(pool.splice(seed % pool.length, 1)[0]);
+  }
+  return picked;
+}
+
+function completeMission(id) {
+  const m = missionState();
+  if (m.done.includes(id)) return;
+  if (!dailyMissions().some(x => x.id === id)) return;
+  m.done.push(id);
+  saveMissions(m);
+  const pts = MISSION_POOL.find(x => x.id === id).pts;
+  state.points += pts;
+  localStorage.setItem('nilora.points', String(state.points));
+}
+
+function earnedIds() { return state.demo ? state.demoStamps : []; }
+function earnedCount() { return earnedIds().length; }
+function levelFor(n) { return LEVELS.filter(l => n >= l.min).pop(); }
+function nextLevel(l) { const i = LEVELS.indexOf(l); return LEVELS[i + 1] || null; }
+
 function cartoucheSVG() {
-  const label = 'NILORA';
   return `
   <svg class="cartouche" viewBox="0 0 200 88" role="img" aria-label="cartouche">
     <path d="M100 6 C 40 6 14 24 14 44 C 14 64 40 82 100 82 C 160 82 186 64 186 44 C 186 24 160 6 100 6 Z"
@@ -101,17 +134,17 @@ function cartoucheSVG() {
       fill="none" stroke="#C6A15B" stroke-width="1.4" stroke-dasharray="5 4" opacity="0.7"/>
     <rect x="14" y="40" width="7" height="8" fill="#C6A15B"/>
     <text x="100" y="40" text-anchor="middle" font-family="Cairo, sans-serif" font-weight="900"
-      font-size="17" fill="#C6A15B" letter-spacing="4">${label}</text>
+      font-size="17" fill="#C6A15B" letter-spacing="4">NILORA</text>
     <text x="100" y="62" text-anchor="middle" font-size="16" fill="#C6A15B" opacity="0.9">☥ ☥ ☥</text>
   </svg>`;
 }
 
-function stampHTML(city, earned, i) {
+function stampHTML(city, earned) {
   const name = city[state.lang];
   const date = earned ? `<div class="stamp-date">${t().earnedOn('٢٠٢٦/١١')}</div>` : '';
   const glyph = earned ? city.glyph : '🔒';
   return `
-    <div class="stamp ${earned ? 'earned' : 'locked'}">
+    <div class="stamp ${earned ? 'earned' : 'locked'}" data-stamp="${city.id}">
       <div class="stamp-ring"><span class="stamp-glyph">${glyph}</span></div>
       <div class="stamp-name">${name}</div>
       ${date}
@@ -121,26 +154,53 @@ function stampHTML(city, earned, i) {
 function renderPassport() {
   const n = earnedCount(), lvl = levelFor(n), nxt = nextLevel(lvl);
   const lang = state.lang;
-  const pct = Math.round((n / CITIES.length) * 100);
+  const pct = Math.round((n / TOTAL_STAMPS) * 100);
   const need = nxt ? nxt.min - n : 0;
-  const nextName = nxt ? nxt[lang] : '';
+  const ids = earnedIds();
+  const missions = dailyMissions();
+  const mState = missionState();
+  const pts = state.points;
   return `
     <section class="hero">
       ${cartoucheSVG()}
       <div class="hero-level">${lvl.badge} ${lvl[lang]}</div>
       <div class="hero-sub">${t().heroSub}</div>
       <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
-      <div class="progress-label">${t().stampsOf(n, CITIES.length)} · ${pct}%</div>
-      <div class="next-level">${t().nextLevel(nextName, need)}</div>
-      <button id="demoToggle" class="demo-toggle ${state.demo ? 'on' : ''}" type="button">
-        ${state.demo ? t().demoOn : t().demo}
-      </button>
+      <div class="progress-label">${t().stampsOf(n, TOTAL_STAMPS)} · ${pct}% · ${t().points(pts)}</div>
+      <div class="next-level">${t().nextLevel(nxt ? nxt[lang] : '', need)}</div>
+      <div class="hero-actions">
+        <button id="shareBtn" class="share-btn" type="button">📤 ${t().shareBtn}</button>
+        <button id="demoToggle" class="demo-toggle ${state.demo ? 'on' : ''}" type="button">
+          ${state.demo ? t().demoOn : t().demo}
+        </button>
+      </div>
     </section>
 
-    <h2 class="section-title">${t().stampsTitle}</h2>
-    <div class="stamp-grid">
-      ${CITIES.map((c, i) => stampHTML(c, i < n, i)).join('')}
+    <h2 class="section-title">${t().missionsTitle}</h2>
+    <div class="missions">
+      ${missions.map(m => {
+        const done = mState.done.includes(m.id);
+        return `<div class="mission-row ${done ? 'done' : ''}">
+          <span class="mission-pts">+${m.pts}</span>
+          <span class="mission-text">${m[lang]}</span>
+          <span class="mission-state">${done ? t().done : ''}</span>
+        </div>`;
+      }).join('')}
+      <div class="mission-row rare ${pts >= 100 ? 'done' : ''}">
+        <span class="mission-pts">🪲</span>
+        <span class="mission-text"><b>${t().rareTitle}:</b> ${t().rareBody}</span>
+        <span class="mission-state">${pts >= 100 ? t().done : `${Math.min(pts,100)}/100`}</span>
+      </div>
     </div>
+
+    <h2 class="section-title">${t().stampsTitle}</h2>
+    ${COUNTRIES.map(cn => `
+      <div class="country-block">
+        <div class="country-head">${cn.flag} ${cn[lang]} <span class="country-count">${cn.cities.filter(c => ids.includes(c.id)).length}/${cn.cities.length}</span></div>
+        <div class="stamp-grid">
+          ${cn.cities.map(c => stampHTML(c, ids.includes(c.id))).join('')}
+        </div>
+      </div>`).join('')}
 
     <h2 class="section-title">${t().levelsTitle}</h2>
     <div class="levels">
@@ -155,38 +215,94 @@ function renderPassport() {
     </div>`;
 }
 
-function renderMap() {
-  const i18n = t();
-  return `
-    <h2 class="section-title">${i18n.mapTitle}</h2>
-    <div id="map"></div>
-    <div class="map-legend">
-      <span><i class="dot dot-city"></i>${i18n.legendCities}</span>
-      <span><i class="dot dot-quake"></i>${i18n.legendQuakes}</span>
-      <span><i class="dot dot-story"></i>${i18n.legendStories}</span>
-    </div>
-    <div class="live-panel"><h3>🕌 ${i18n.prayerTitle}</h3><div id="prayerRows" class="rows"><span class="live-loading">${i18n.loading}</span></div></div>
-    <div class="live-panel"><h3>🌋 ${i18n.quakeTitle}</h3><div id="quakeRows" class="rows"><span class="live-loading">${i18n.loading}</span></div></div>
-    <div class="soon-card" style="text-align:center"><p style="color:var(--gold-dark);font-weight:700">${i18n.tagline}</p></div>`;
+/* ---- unlock animation + sound ---- */
+
+function playUnlockSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((f, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'triangle';
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0, ctx.currentTime + i * 0.13);
+      g.gain.linearRampToValueAtTime(0.25, ctx.currentTime + i * 0.13 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.13 + 0.5);
+      o.connect(g).connect(ctx.destination);
+      o.start(ctx.currentTime + i * 0.13);
+      o.stop(ctx.currentTime + i * 0.13 + 0.55);
+    });
+    setTimeout(() => ctx.close(), 1200);
+  } catch (e) {}
 }
 
-function renderSoon(kind) {
-  if (kind === 'map') return renderMap();
-  const i18n = t();
-  const cards = {
-    hara: [{ icon: '🏘️', title: i18n.haraTitle, body: i18n.haraBody }],
-    souk: [{ icon: '🏺', title: i18n.soukTitle, body: i18n.soukBody }],
-  }[kind] || [];
-  return cards.map(c => `
-    <div class="soon-card">
-      <h3>${c.icon} ${c.title}</h3>
-      <p>${c.body}</p>
-      <span class="soon-badge">${i18n.comingSoon}</span>
-    </div>`).join('') +
-    `<div class="soon-card" style="text-align:center"><p style="color:var(--gold-dark);font-weight:700">${i18n.tagline}</p></div>`;
+function showUnlock(city) {
+  playUnlockSound();
+  const ov = document.createElement('div');
+  ov.className = 'unlock-overlay';
+  ov.innerHTML = `
+    <div class="unlock-rings"><span></span><span></span><span></span></div>
+    <div class="unlock-stamp">${city.glyph}</div>
+    <div class="unlock-title">${t().unlockTitle}</div>
+    <div class="unlock-city">${city[state.lang]} ${city.country.flag}</div>`;
+  document.body.appendChild(ov);
+  setTimeout(() => ov.classList.add('out'), 1900);
+  setTimeout(() => ov.remove(), 2400);
 }
 
-/* ---- live map (OpenStreetMap + Open-Meteo + USGS + Aladhan, all keyless) ---- */
+/* ---- shareable passport card ---- */
+
+async function sharePassport() {
+  const n = earnedCount(), lvl = levelFor(n);
+  const lang = state.lang;
+  const canvas = document.createElement('canvas');
+  canvas.width = 1080; canvas.height = 1080;
+  const x = canvas.getContext('2d');
+  const grad = x.createLinearGradient(0, 0, 0, 1080);
+  grad.addColorStop(0, '#101D32'); grad.addColorStop(1, '#1B2F50');
+  x.fillStyle = grad; x.fillRect(0, 0, 1080, 1080);
+  // cartouche
+  x.strokeStyle = '#C6A15B'; x.lineWidth = 8;
+  x.beginPath(); x.ellipse(540, 220, 300, 90, 0, 0, Math.PI * 2); x.stroke();
+  x.setLineDash([12, 9]); x.lineWidth = 3;
+  x.beginPath(); x.ellipse(540, 220, 278, 72, 0, 0, Math.PI * 2); x.stroke();
+  x.setLineDash([]);
+  x.fillStyle = '#C6A15B';
+  x.textAlign = 'center';
+  x.font = '900 64px Cairo, sans-serif';
+  x.fillText('NILORA', 540, 240);
+  x.font = '90px serif';
+  x.fillText(lvl.badge, 540, 430);
+  x.font = '900 72px Cairo, sans-serif';
+  x.fillText(lvl[lang], 540, 540);
+  x.fillStyle = '#FAF8F2';
+  x.font = '700 44px Cairo, sans-serif';
+  x.fillText(t().stampsOf(n, TOTAL_STAMPS), 540, 630);
+  x.fillText(t().points(state.points), 540, 700);
+  // earned glyphs
+  const ids = earnedIds();
+  const glyphs = ALL_CITIES.filter(c => ids.includes(c.id)).map(c => c.glyph).slice(0, 12);
+  x.font = '72px serif';
+  glyphs.forEach((g, i) => x.fillText(g, 240 + (i % 6) * 120, 830 + Math.floor(i / 6) * 110));
+  x.fillStyle = '#E9D9BD';
+  x.font = '600 34px Cairo, sans-serif';
+  x.fillText('mohamedostafataher-spec.github.io/NILOTA/web', 540, 1000);
+
+  const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+  const file = new File([blob], 'nilora-passport.png', { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: 'NILORA Passport' }); return; } catch (e) {}
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'nilora-passport.png';
+  a.click();
+  const btn = document.getElementById('shareBtn');
+  if (btn) btn.textContent = t().shareDone;
+}
+
+/* ---- live map ---- */
 
 let mapObj = null;
 const WEATHER_CODES = {
@@ -205,18 +321,29 @@ function weatherLabel(code) {
 
 async function cityPopup(marker, city) {
   const name = city[state.lang];
-  marker.bindPopup(`<b>${name}</b><br>${t().loading}`).openPopup();
+  marker.bindPopup(`<b>${city.country.flag} ${name}</b><br>${t().loading}`).openPopup();
   try {
     const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + city.lat + '&longitude=' + city.lon +
-      '&current=temperature_2m,weather_code,wind_speed_10m&timezone=Africa%2FCairo';
+      '&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto';
     const r = await fetch(url);
     const j = await r.json();
     const cur = j.current;
-    marker.setPopupContent(
-      `<b>${name}</b><br>${t().weatherNow}: ${weatherLabel(cur.weather_code)} · ` +
-      `${Math.round(cur.temperature_2m)}°C · 💨 ${Math.round(cur.wind_speed_10m)} km/h`);
+    completeMission('weather');
+    const weatherHtml = `<b>${city.country.flag} ${name}</b><br>${t().weatherNow}: ${weatherLabel(cur.weather_code)} · ` +
+      `${Math.round(cur.temperature_2m)}°C · 💨 ${Math.round(cur.wind_speed_10m)} km/h`;
+    marker.setPopupContent(weatherHtml + '<div class="guide-text">' + t().loading + '</div>');
+    // free city guide: short Wikipedia extract, no key
+    try {
+      const title = encodeURIComponent(state.lang === 'ar' ? city.ar : city.en);
+      const gr = await fetch('https://' + wikiHost() + '/api/rest_v1/page/summary/' + title);
+      const gj = await gr.json();
+      const guide = (gj.extract || '').slice(0, 320);
+      marker.setPopupContent(weatherHtml + (guide ? '<div class="guide-text">📖 ' + guide + '…</div>' : ''));
+    } catch (e2) {
+      marker.setPopupContent(weatherHtml);
+    }
   } catch (e) {
-    marker.setPopupContent(`<b>${name}</b>`);
+    marker.setPopupContent(`<b>${city.country.flag} ${name}</b>`);
   }
 }
 
@@ -232,6 +359,7 @@ async function loadPrayerTimes() {
       : [['Fajr','Fajr'],['Sunrise','Sunrise'],['Dhuhr','Dhuhr'],['Asr','Asr'],['Maghrib','Maghrib'],['Isha','Isha']];
     el.innerHTML = names.map(([label, key]) =>
       `<div><b>${label}</b> · ${tt[key]}</div>`).join('');
+    completeMission('prayer');
   } catch (e) { el.textContent = '—'; }
 }
 
@@ -256,7 +384,7 @@ async function loadQuakes(map) {
   } catch (e) { if (el) el.textContent = '—'; }
 }
 
-/* ---- papyrus stories: Wikipedia geosearch around the visible map ---- */
+/* ---- papyrus stories ---- */
 
 let storyLayer = null;
 let storyTimer = null;
@@ -301,9 +429,10 @@ async function loadStories(lat, lon) {
     const extracts = await fetchExtracts(pages.map(p => p.pageid));
     pages.forEach(p => {
       const ex = extracts[p.pageid] ? extracts[p.pageid].extract : '';
-      L.marker([p.lat, p.lon], {
+      const m = L.marker([p.lat, p.lon], {
         icon: L.divIcon({ className: 'story-marker', html: '📜', iconSize: [28, 28] }),
       }).addTo(storyLayer).bindPopup(storyPopupHTML(p, ex), { maxWidth: 280 });
+      m.on('popupopen', () => completeMission('story'));
     });
   } catch (e) { /* stories are best-effort */ }
 }
@@ -325,11 +454,11 @@ function watchStories() {
 function initMap() {
   if (typeof L === 'undefined') return;
   if (mapObj) { mapObj.remove(); mapObj = null; }
-  mapObj = L.map('map', { scrollWheelZoom: false }).setView([27.5, 30.5], 5);
+  mapObj = L.map('map', { scrollWheelZoom: false, worldCopyJump: true }).setView([27.5, 30.5], 5);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 18, attribution: '&copy; OpenStreetMap',
   }).addTo(mapObj);
-  CITIES.forEach(city => {
+  ALL_CITIES.forEach(city => {
     const m = L.marker([city.lat, city.lon], {
       icon: L.divIcon({ className: 'city-marker', html: city.glyph, iconSize: [30, 30] }),
     }).addTo(mapObj);
@@ -338,6 +467,40 @@ function initMap() {
   loadPrayerTimes();
   loadQuakes(mapObj);
   watchStories();
+  completeMission('open_map');
+}
+
+/* ---- screens ---- */
+
+function renderMap() {
+  const i18n = t();
+  return `
+    <h2 class="section-title">${i18n.mapTitle}</h2>
+    <div id="map"></div>
+    <div class="map-legend">
+      <span><i class="dot dot-city"></i>${i18n.legendCities}</span>
+      <span><i class="dot dot-quake"></i>${i18n.legendQuakes}</span>
+      <span><i class="dot dot-story"></i>${i18n.legendStories}</span>
+    </div>
+    <div class="live-panel"><h3>🕌 ${i18n.prayerTitle}</h3><div id="prayerRows" class="rows"><span class="live-loading">${i18n.loading}</span></div></div>
+    <div class="live-panel"><h3>🌋 ${i18n.quakeTitle}</h3><div id="quakeRows" class="rows"><span class="live-loading">${i18n.loading}</span></div></div>
+    <div class="soon-card" style="text-align:center"><p style="color:var(--gold-dark);font-weight:700">${i18n.tagline}</p></div>`;
+}
+
+function renderSoon(kind) {
+  if (kind === 'map') return renderMap();
+  const i18n = t();
+  const cards = {
+    hara: [{ icon: '🏘️', title: i18n.haraTitle, body: i18n.haraBody }],
+    souk: [{ icon: '🏺', title: i18n.soukTitle, body: i18n.soukBody }],
+  }[kind] || [];
+  return cards.map(c => `
+    <div class="soon-card">
+      <h3>${c.icon} ${c.title}</h3>
+      <p>${c.body}</p>
+      <span class="soon-badge">${i18n.comingSoon}</span>
+    </div>`).join('') +
+    `<div class="soon-card" style="text-align:center"><p style="color:var(--gold-dark);font-weight:700">${i18n.tagline}</p></div>`;
 }
 
 function render() {
@@ -368,11 +531,29 @@ function render() {
     localStorage.setItem('nilora.demo', state.demo ? '1' : '0');
     render();
   });
+
+  const shareBtn = document.getElementById('shareBtn');
+  if (shareBtn) shareBtn.addEventListener('click', sharePassport);
+
+  // demo sandbox: tapping a locked stamp earns it with the unlock animation
+  document.querySelectorAll('.stamp.locked').forEach(el => {
+    el.addEventListener('click', () => {
+      if (!state.demo) return;
+      const id = el.dataset.stamp;
+      if (state.demoStamps.includes(id)) return;
+      state.demoStamps.push(id);
+      localStorage.setItem('nilora.demoStamps', JSON.stringify(state.demoStamps));
+      const city = ALL_CITIES.find(c => c.id === id);
+      showUnlock(city);
+      setTimeout(render, 2000);
+    });
+  });
 }
 
 document.getElementById('langToggle').addEventListener('click', () => {
   state.lang = state.lang === 'ar' ? 'en' : 'ar';
   localStorage.setItem('nilora.lang', state.lang);
+  completeMission('languages');
   render();
 });
 
