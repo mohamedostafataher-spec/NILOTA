@@ -296,3 +296,27 @@ body {
   box-shadow: 0 2px 6px rgba(0,0,0,0.35);
 }
 .leaflet-popup-content { font-family: 'Cairo', sans-serif !important; font-size: 13px; }
+
+/* Papyrus stories */
+.dot-story { background: #E9D9BD; border: 1.5px solid #846425; }
+.story-marker {
+  background: #F3EAD8;
+  border: 2px solid #846425;
+  border-radius: 50% 50% 50% 6px;
+  width: 28px !important;
+  height: 28px !important;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  box-shadow: 0 2px 5px rgba(58,41,8,0.35);
+}
+.papyrus-popup {
+  background: linear-gradient(170deg, #F7EEDB, #E9D9BD);
+  border: 1px solid #C6A15B;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #3A2908;
+}
+.papyrus-title { font-weight: 900; font-size: 14px; margin-bottom: 6px; }
+.papyrus-text { font-size: 12px; line-height: 1.8; margin-bottom: 8px; }
+.papyrus-popup a { color: #0D7D78; font-weight: 700; font-size: 12px; }
