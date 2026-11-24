@@ -100,3 +100,21 @@ NILORA is a mobile-first Android platform built with **Kotlin, Jetpack Compose, 
   ```bash
   gradle :app:compileDebugKotlin
   ```
+
+---
+
+## 5. Local Build & CI
+
+**Requirements:** JDK 17 (Temurin), Android SDK with Platform 36, and Gradle 9.3.1 (the version pinned in `gradle/wrapper/gradle-wrapper.properties`; install it from gradle.org or via SDKMAN until the `gradlew` script is added back to the repo).
+
+```bash
+# Unit + Robolectric UI tests
+gradle :app:testDebugUnitTest
+
+# Debug APK (output: app/build/outputs/apk/debug/)
+gradle :app:assembleDebug
+```
+
+`app/google-services.json` is intentionally not committed; the Google Services Gradle plugin is configured with `missingGoogleServicesStrategy = WARN`, so local and CI builds succeed without it. Firebase-dependent features stay inert until a real `google-services.json` is placed in `app/`.
+
+**Continuous Integration:** `.github/workflows/android-ci.yml` runs on every push to `main` and every pull request: it sets up JDK 17 and the Android SDK, runs `gradle testDebugUnitTest`, builds `gradle assembleDebug`, and uploads the debug APK as a workflow artifact.

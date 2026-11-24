@@ -67,10 +67,10 @@ android {
     unitTests {
       isIncludeAndroidResources = true
       all {
-        it.systemProperty(
-          "robolectric.dependency.repo.url",
-          "https://maven-central.storage-download.googleapis.com/maven2"
-        )
+        // Pin the instrumentation SDK for CI: Robolectric 4.16.1 does not resolve targetSdk 36.
+        // (Also removed the custom robolectric.dependency.repo.url mirror so the
+        // android-all test jars resolve from Maven Central, which CI runners can reach.)
+        it.systemProperty("robolectric.sdk", "35")
       }
     }
   }
