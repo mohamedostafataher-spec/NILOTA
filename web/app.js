@@ -19,7 +19,8 @@ const MISSION_POOL = [
 const I18N = {
   ar: {
     dir: 'rtl', langBtn: 'EN',
-    tabPassport: 'الجواز', tabMap: 'الخريطة', tabTravel: 'سافر', tabHara: 'الحارة', tabSouk: 'السوق',
+    tabPassport: 'الجواز', tabMap: 'الخريطة', tabGlobe: 'العالم ٣D', tabTravel: 'سافر', tabHara: 'الحارة', tabSouk: 'السوق',
+    globeTitle: 'العالم ثلاثي الأبعاد', globeHint: 'لفّ الكوكب بإيدك ودوس على أي مدينة — النهار والليل حقيقيين حسب الوقت دلوقتي',
     travelTitle: 'وضع المسافر', chooseDest: 'اختار وجهتك…', currencyLabel: 'العملة',
     phrasesTitle: 'اتعلم ٥ كلمات من البلد', localTimeLabel: 'الساعة هناك',
     eventTitle: 'احتفال النهاردة في العالم', eventClaim: 'احسبها +٢٠ نقطة', eventClaimed: 'اتحسبت ✅',
@@ -55,7 +56,8 @@ const I18N = {
   },
   en: {
     dir: 'ltr', langBtn: 'عربي',
-    tabPassport: 'Passport', tabMap: 'Map', tabTravel: 'Travel', tabHara: 'Hara', tabSouk: 'Souk',
+    tabPassport: 'Passport', tabMap: 'Map', tabGlobe: '3D World', tabTravel: 'Travel', tabHara: 'Hara', tabSouk: 'Souk',
+    globeTitle: 'The 3D world', globeHint: 'Spin the globe and tap any city — day and night follow real time',
     travelTitle: 'Traveler mode', chooseDest: 'Choose your destination…', currencyLabel: 'Currency',
     phrasesTitle: 'Learn 5 local words', localTimeLabel: 'Local time there',
     eventTitle: "Today's world celebration", eventClaim: 'Claim +20 pts', eventClaimed: 'Claimed ✅',
@@ -616,6 +618,16 @@ async function loadDestination(cityId) {
   el.innerHTML = weatherHtml + timeHtml + currHtml + wordsHtml;
 }
 
+function renderGlobe() {
+  const i18n = t();
+  return `
+    <h2 class="section-title">${i18n.globeTitle}</h2>
+    <div id="globe" class="globe-wrap"></div>
+    <div class="map-legend"><span>${i18n.globeHint}</span></div>
+    <div id="globeCityCard" class="live-panel" style="display:none"></div>
+    <div class="soon-card" style="text-align:center"><p style="color:var(--gold-dark);font-weight:700">${i18n.tagline}</p></div>`;
+}
+
 /* ---- screens ---- */
 
 function renderMap() {
@@ -668,10 +680,13 @@ function render() {
   });
 
   if (mapObj && route !== 'map') { mapObj.remove(); mapObj = null; }
+  if (globeState && route !== 'globe') { globeState.dispose(); globeState = null; }
   if (route === 'passport') app.innerHTML = renderPassport();
   else if (route === 'travel') app.innerHTML = renderTravel();
+  else if (route === 'globe') app.innerHTML = renderGlobe();
   else app.innerHTML = renderSoon(route);
   if (route === 'map') { initMap(); loadWorldEvent(); }
+  if (route === 'globe') initGlobe();
 
   const destSelect = document.getElementById('destSelect');
   if (destSelect) destSelect.addEventListener('change', () => loadDestination(destSelect.value));
