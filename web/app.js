@@ -66,6 +66,14 @@ const I18N = {
     memoryTitle: 'ذاكرة نيلورا', memorySub: 'كل خطوة في رحلتك متسجّلة هنا',
     memoryEmpty: 'الذاكرة لسه فاضية — ابدأ اجمع أختام ونقاط',
     memStamp: (n) => `ختم جديد: ${n}`, memMission: (n, p) => `مهمة خلصت: ${n} (+${p})`, memStart: 'بداية الرحلة',
+    soukTitle2: 'سوق التبادل الثقافي', soukSub2: 'اعرض حاجة من ثقافتك واطلب حاجة من ثقافة تانية — تبادل حقيقي بين مسافرين',
+    swapOffer: 'بتعرض إيه؟', swapWant: 'عايز إيه في المقابل؟', swapCity: 'منين؟', swapBtn: 'انشر العرض',
+    swapYours: 'عروضك', swapOpen: 'عروض مفتوحة', swapEmpty: 'لسه مفيش عروض — انشر أول واحد',
+    swapDone: 'اتنشر العرض 🎉', swapInterest: 'مهتم',
+    savedTitle: 'الأماكن المحفوظة', savedEmpty: 'لسه محفظتش أماكن — احفظ من وضع المسافر',
+    savePlace: 'احفظ المكان', savedDone: 'اتحفظ ✅', savedRemove: 'شيل',
+    eventsTitle: 'أحداث العالم الجاية', eventsSub: 'الأعياد الرسمية الجاية حوالين العالم',
+    aboutTitle: 'عن نيلورا', aboutVersion: 'نسخة الويب v7 — شغالة كلها بدون مفاتيح API',
 
     missionsTitle: 'مهام النهاردة', points: (p) => `${p} نقطة`, done: 'تم ✅',
     rareTitle: 'ختم نادر', rareBody: 'الجعران الذهبي — اجمع ١٠٠ نقطة',
@@ -213,6 +221,14 @@ const I18N = {
     memoryTitle: 'NILORA memory', memorySub: 'Every step of your journey is recorded here',
     memoryEmpty: 'Memory is still empty — start collecting stamps and points',
     memStamp: (n) => `New stamp: ${n}`, memMission: (n, p) => `Mission done: ${n} (+${p})`, memStart: 'The journey begins',
+    soukTitle2: 'The culture-swap souk', soukSub2: 'Offer something from your culture, ask for something from another — a real exchange between travelers',
+    swapOffer: 'What do you offer?', swapWant: 'What do you want in return?', swapCity: 'From where?', swapBtn: 'Post the offer',
+    swapYours: 'Your offers', swapOpen: 'Open offers', swapEmpty: 'No offers yet — post the first one',
+    swapDone: 'Offer posted 🎉', swapInterest: 'Interested',
+    savedTitle: 'Saved places', savedEmpty: 'No saved places yet — save from traveler mode',
+    savePlace: 'Save this place', savedDone: 'Saved ✅', savedRemove: 'Remove',
+    eventsTitle: 'Upcoming world events', eventsSub: 'Official public holidays coming up around the world',
+    aboutTitle: 'About NILORA', aboutVersion: 'Web v7 — fully keyless, no API keys anywhere',
 
     missionsTitle: "Today's missions", points: (p) => `${p} pts`, done: 'Done ✅',
     rareTitle: 'Rare stamp', rareBody: 'The Golden Scarab — collect 100 points',
@@ -757,7 +773,21 @@ async function loadDestination(cityId) {
     ? `<div class="phrases-title">${t().phrasesTitle}</div>` + words.map(w =>
         `<div class="phrase-row"><b>${w[0]}</b> <span class="phrase-tr">(${w[1]})</span> — ${w[2]}</div>`).join('')
     : '';
-  el.innerHTML = weatherHtml + timeHtml + currHtml + wordsHtml;
+  const isSaved = savedPlaces().includes(cityId);
+  el.innerHTML = weatherHtml + timeHtml + currHtml + wordsHtml +
+    `<button class="btn-gold" id="savePlaceBtn" style="margin-top:10px">${isSaved ? t().savedDone : t().savePlace}</button>`;
+  const sp = document.getElementById('savePlaceBtn');
+  if (sp && !isSaved) sp.addEventListener('click', () => {
+    const s = savedPlaces();
+    s.push(cityId);
+    localStorage.setItem('nilora.saved', JSON.stringify(s));
+    state.points += 5;
+    localStorage.setItem('nilora.points', String(state.points));
+    logMemory('stamp', city[state.lang] || city.en);
+    sp.textContent = t().savedDone;
+    sp.disabled = true;
+    updateHud();
+  });
 }
 
 function renderGlobe() {
@@ -789,6 +819,10 @@ function renderHome() {
       <a class="hub-card" href="#/travel"><span class="hub-ico">✈️</span><b>${i18n.hubTravel}</b><small>${i18n.hubTravelSub}</small></a>
       <a class="hub-card" href="#/cards"><span class="hub-ico">📮</span><b>${i18n.hubCards}</b><small>${i18n.hubCardsSub}</small></a>
       <a class="hub-card" href="#/memory"><span class="hub-ico">📜</span><b>${i18n.memoryTitle}</b><small>${i18n.memorySub}</small></a>
+      <a class="hub-card" href="#/souk"><span class="hub-ico">🏺</span><b>${i18n.soukTitle2}</b><small>${i18n.soukSub2}</small></a>
+      <a class="hub-card" href="#/events"><span class="hub-ico">🎉</span><b>${i18n.eventsTitle}</b><small>${i18n.eventsSub}</small></a>
+      <a class="hub-card" href="#/saved"><span class="hub-ico">⭐</span><b>${i18n.savedTitle}</b><small>${i18n.savedEmpty}</small></a>
+      <a class="hub-card" href="#/about"><span class="hub-ico">☥</span><b>${i18n.aboutTitle}</b><small>${i18n.aboutVersion}</small></a>
     </div>
     <div class="soon-card" style="text-align:center"><p style="color:var(--gold);font-weight:700">${i18n.tagline}</p></div>`;
 }
@@ -904,6 +938,123 @@ function renderMemory() {
     <div class="memory-row"><span class="memory-ico">☥</span><div><div class="memory-text">${i18n.memStart}</div></div></div>`;
 }
 
+
+/* ---- culture-swap souk ---- */
+function mySwaps() { return JSON.parse(localStorage.getItem('nilora.swaps') || '[]'); }
+
+function seedSwaps() {
+  if (localStorage.getItem('nilora.swapsSeeded')) return;
+  localStorage.setItem('nilora.swapsSeeded', '1');
+  const seeds = [
+    { id: 'w1', offer: 'A hand-written Arabic calligraphy of your name', want: 'A local recipe from your hometown', from: 'Egypt', cityId: 'cairo', own: false },
+    { id: 'w2', offer: 'A playlist of 20 underground Cairo tracks', want: 'A voice note teaching me your favorite tongue twister', from: 'Egypt', cityId: 'alexandria', own: false },
+    { id: 'w3', offer: 'Origami crane + folding tutorial', want: 'A photo of your city at dawn', from: 'Japan', cityId: 'kyoto', own: false },
+  ];
+  localStorage.setItem('nilora.swapsFeed', JSON.stringify(seeds));
+}
+
+function swapRow(s, own) {
+  const i18n = t();
+  const city = ALL_CITIES.find(x => x.id === s.cityId);
+  const cname = city ? (city[state.lang] || city.en) : '';
+  const flag = city ? city.country.flag : '🌍';
+  return `
+    <div class="postcard">
+      <div class="postcard-head"><span>${flag} <b>${cname}</b></span><small>${own ? '' : s.from}</small></div>
+      <p class="postcard-text"><b>${i18n.swapOffer}</b> ${s.offer.replace(/</g,'&lt;')}<br/><b>${i18n.swapWant}</b> ${s.want.replace(/</g,'&lt;')}</p>
+      ${own ? '' : `<div class="postcard-actions"><button class="pc-act" data-interest="${s.id}">🤝 ${i18n.swapInterest}</button><button class="pc-act" data-report="${s.id}">🚩 ${i18n.cardReport}</button></div>`}
+    </div>`;
+}
+
+function renderSouk() {
+  const i18n = t();
+  seedSwaps();
+  const mine = mySwaps();
+  const feed = JSON.parse(localStorage.getItem('nilora.swapsFeed') || '[]');
+  return `
+    <h2 class="section-title">${i18n.soukTitle2}</h2>
+    <p class="cards-sub">${i18n.soukSub2}</p>
+    <div class="live-panel">
+      <input id="swapOffer" placeholder="${i18n.swapOffer}" />
+      <input id="swapWant" placeholder="${i18n.swapWant}" />
+      <select id="swapCity"><option value="">${i18n.swapCity}…</option>
+        ${ALL_CITIES.map(ct => `<option value="${ct.id}">${ct.country.flag} ${ct[state.lang] || ct.en}</option>`).join('')}
+      </select>
+      <button id="swapSend" class="btn-gold">${i18n.swapBtn}</button>
+    </div>
+    <h2 class="section-title">${i18n.swapYours}</h2>
+    ${mine.length ? mine.map(s => swapRow(s, true)).join('') : `<p class="cards-empty">${i18n.swapEmpty}</p>`}
+    <h2 class="section-title">${i18n.swapOpen}</h2>
+    ${feed.map(s => swapRow(s, false)).join('')}`;
+}
+
+function sendSwap() {
+  const offer = document.getElementById('swapOffer').value.trim();
+  const want = document.getElementById('swapWant').value.trim();
+  const cityId = document.getElementById('swapCity').value;
+  if (!offer || !want || !cityId) return;
+  const mine = mySwaps();
+  mine.unshift({ id: 'w' + Date.now(), offer, want, cityId, ts: Date.now() });
+  localStorage.setItem('nilora.swaps', JSON.stringify(mine));
+  state.points += 10;
+  localStorage.setItem('nilora.points', String(state.points));
+  logMemory('card', offer.slice(0, 50));
+  render();
+}
+
+/* ---- saved places ---- */
+function savedPlaces() { return JSON.parse(localStorage.getItem('nilora.saved') || '[]'); }
+
+function renderSaved() {
+  const i18n = t();
+  const saved = savedPlaces().map(id => ALL_CITIES.find(x => x.id === id)).filter(Boolean);
+  return `
+    <h2 class="section-title">${i18n.savedTitle}</h2>
+    ${saved.length ? saved.map(city => `
+      <div class="postcard">
+        <div class="postcard-head"><span>${city.country.flag} <b>${city[state.lang] || city.en}</b></span>
+        <button class="pc-act" data-unsave="${city.id}">${i18n.savedRemove}</button></div>
+        <p class="postcard-text">${city.country[state.lang] || city.country.en}</p>
+      </div>`).join('') : `<p class="cards-empty">${i18n.savedEmpty}</p>`}`;
+}
+
+/* ---- upcoming world events ---- */
+function renderEvents() {
+  const i18n = t();
+  return `
+    <h2 class="section-title">${i18n.eventsTitle}</h2>
+    <p class="cards-sub">${i18n.eventsSub}</p>
+    <div class="live-panel"><div id="eventsList" class="rows"><span class="live-loading">${i18n.loading}</span></div></div>`;
+}
+
+async function loadEvents() {
+  const el = document.getElementById('eventsList');
+  if (!el) return;
+  try {
+    const r = await fetch('https://date.nager.at/api/v3/NextPublicHolidaysWorldwide');
+    const data = await r.json();
+    el.innerHTML = data.slice(0, 15).map(e => {
+      const cc = COUNTRIES.find(x => x.code === e.countryCode);
+      const flag = cc ? cc.flag : '🌍';
+      const cname = cc ? (cc[state.lang] || cc.en) : e.countryCode;
+      return `<div class="row"><span>${flag} <b>${e.localName || e.name}</b></span><small>${cname} · ${e.date}</small></div>`;
+    }).join('');
+  } catch (e) { el.innerHTML = `<span class="live-loading">${t().noEvent}</span>`; }
+}
+
+/* ---- about / settings ---- */
+function renderAbout() {
+  const i18n = t();
+  return `
+    <h2 class="section-title">${i18n.aboutTitle}</h2>
+    <div class="live-panel" style="text-align:center">
+      <p style="color:var(--gold);font-weight:900;letter-spacing:2px;line-height:2">NILORA — BUILT TO BE INDEPENDENT.<br/>CONNECTED TO THE REAL WORLD.<br/>THE WORLD CONNECTS THROUGH NILORA.</p>
+      <p class="cards-sub">Created &amp; Founded by Mohamed Mostafa Taher.</p>
+      <p class="cards-sub">${i18n.aboutVersion}</p>
+      <p class="cards-sub">OpenStreetMap · Open-Meteo · USGS · Aladhan · Wikipedia · Nager.Date · open.er-api.com · Natural Earth</p>
+    </div>`;
+}
+
 /* ---- screens ---- */
 
 function renderMap() {
@@ -964,12 +1115,23 @@ function render() {
   else if (route === 'cards') app.innerHTML = renderCards();
   else if (route === 'memory') app.innerHTML = renderMemory();
   else if (route === 'home') app.innerHTML = renderHome();
+  else if (route === 'souk') app.innerHTML = renderSouk();
+  else if (route === 'saved') app.innerHTML = renderSaved();
+  else if (route === 'events') app.innerHTML = renderEvents();
+  else if (route === 'about') app.innerHTML = renderAbout();
   else app.innerHTML = renderSoon(route);
   if (route === 'map') { initMap(); loadWorldEvent(); }
+  if (route === 'events') loadEvents();
   if (route === 'globe') initGlobe();
 
   const destSelect = document.getElementById('destSelect');
   if (destSelect) destSelect.addEventListener('change', () => loadDestination(destSelect.value));
+  const preDest = sessionStorage.getItem('nilora.dest');
+  if (preDest && destSelect) {
+    sessionStorage.removeItem('nilora.dest');
+    destSelect.value = preDest;
+    loadDestination(preDest);
+  }
 
   const demoBtn = document.getElementById('demoToggle');
   if (demoBtn) demoBtn.addEventListener('click', () => {
@@ -977,6 +1139,15 @@ function render() {
     localStorage.setItem('nilora.demo', state.demo ? '1' : '0');
     render();
   });
+
+  const swapSendBtn = document.getElementById('swapSend');
+  if (swapSendBtn) swapSendBtn.addEventListener('click', sendSwap);
+  document.querySelectorAll('[data-interest]').forEach(b => b.addEventListener('click', () => { b.textContent = '✅'; b.disabled = true; }));
+  document.querySelectorAll('[data-unsave]').forEach(b => b.addEventListener('click', () => {
+    const left = savedPlaces().filter(id => id !== b.dataset.unsave);
+    localStorage.setItem('nilora.saved', JSON.stringify(left));
+    render();
+  }));
 
   const cardSendBtn = document.getElementById('cardSend');
   if (cardSendBtn) cardSendBtn.addEventListener('click', sendCard);
