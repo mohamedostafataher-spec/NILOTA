@@ -23,6 +23,8 @@ const I18N = {
     travelTitle: 'وضع المسافر', chooseDest: 'اختار وجهتك…', currencyLabel: 'العملة',
     phrasesTitle: 'اتعلم ٥ كلمات من البلد', localTimeLabel: 'الساعة هناك',
     eventTitle: 'احتفال النهاردة في العالم', eventClaim: 'احسبها +٢٠ نقطة', eventClaimed: 'اتحسبت ✅',
+    weeklyTitle: 'تحدي الأسبوع', weeklyBody: 'اجمع ٥ أختام من ٣ دول مختلفة الأسبوع ده', weeklyReward: 'الجايزة: ختم نادر + ٥٠ نقطة',
+    boardTitle: 'المتصدرين (محلي)', youRow: 'انت', mockNote: 'الترتيب الحقيقي أونلاين ييجي مع الباك إند',
     noEvent: 'مفيش احتفال رسمي النهاردة — بص بكرة', highLow: 'العظمى/الصغرى',
     heroSub: 'جواز سفرك للعالم — الأختام تتجمع من أماكن حقيقية، مش من الشاشة',
     stampsOf: (n, t) => `${n} من ${t} ختم`,
@@ -57,6 +59,8 @@ const I18N = {
     travelTitle: 'Traveler mode', chooseDest: 'Choose your destination…', currencyLabel: 'Currency',
     phrasesTitle: 'Learn 5 local words', localTimeLabel: 'Local time there',
     eventTitle: "Today's world celebration", eventClaim: 'Claim +20 pts', eventClaimed: 'Claimed ✅',
+    weeklyTitle: 'Weekly challenge', weeklyBody: 'Collect 5 stamps from 3 different countries this week', weeklyReward: 'Reward: rare stamp + 50 pts',
+    boardTitle: 'Leaderboard (local)', youRow: 'You', mockNote: 'Real online ranking comes with the backend',
     noEvent: 'No official holiday today — check back tomorrow', highLow: 'High/Low',
     heroSub: 'Your world passport — stamps are earned in real places, not on a screen',
     stampsOf: (n, t) => `${n} of ${t} stamps`,
@@ -159,6 +163,44 @@ function stampHTML(city, earned) {
     </div>`;
 }
 
+function weekKey() {
+  const d = new Date();
+  const onejan = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil((((d - onejan) / 86400000) + onejan.getDay() + 1) / 7);
+  return d.getFullYear() + '-W' + week;
+}
+
+function weeklyChallengeHTML(n) {
+  const raw = JSON.parse(localStorage.getItem('nilora.weekly') || '{}');
+  const done = raw.week === weekKey() && raw.done;
+  const ids = earnedIds();
+  const countries = new Set(ALL_CITIES.filter(c => ids.includes(c.id)).map(c => c.country.code));
+  const goalStamps = Math.min(n, 5), goalCountries = Math.min(countries.size, 3);
+  return `<div class="live-panel weekly ${done ? 'done' : ''}">
+    <h3>🏆 ${t().weeklyTitle}</h3>
+    <div class="rows">${t().weeklyBody}</div>
+    <div class="rows" style="margin-top:6px"><b>${goalStamps}/5</b> · <b>${goalCountries}/3</b> ${state.lang === 'ar' ? 'دول' : 'countries'}</div>
+    <div class="rows weekly-reward">${t().weeklyReward}</div>
+    ${done ? `<div class="rows">✅</div>` : ''}
+  </div>`;
+}
+
+const MOCK_NAMES = [['كابتن سارة', 340], ['GlobeTrotter_88', 285], ['مسافر_النيل', 220], ['Layla.roams', 150], ['WanderAsh', 90]];
+
+function leaderboardHTML(pts) {
+  const rows = [...MOCK_NAMES.map(([nm, p]) => ({ nm, p, you: false })), { nm: t().youRow, p: pts, you: true }];
+  rows.sort((a, b) => b.p - a.p);
+  return `<div class="live-panel">
+    <h3>📊 ${t().boardTitle}</h3>
+    ${rows.map((r, i) => `<div class="board-row ${r.you ? 'you' : ''}">
+      <span class="board-rank">${['🥇','🥈','🥉'][i] || (i + 1)}</span>
+      <span class="board-name">${r.nm}${r.you ? ' 🧭' : ''}</span>
+      <span class="board-pts">${t().points(r.p)}</span>
+    </div>`).join('')}
+    <div class="rows" style="margin-top:8px;font-size:11.5px">${t().mockNote}</div>
+  </div>`;
+}
+
 function renderPassport() {
   const n = earnedCount(), lvl = levelFor(n), nxt = nextLevel(lvl);
   const lang = state.lang;
@@ -200,6 +242,12 @@ function renderPassport() {
         <span class="mission-state">${pts >= 100 ? t().done : `${Math.min(pts,100)}/100`}</span>
       </div>
     </div>
+
+    <h2 class="section-title">${t().weeklyTitle}</h2>
+    ${weeklyChallengeHTML(n)}
+
+    <h2 class="section-title">${t().boardTitle}</h2>
+    ${leaderboardHTML(pts)}
 
     <h2 class="section-title">${t().stampsTitle}</h2>
     ${COUNTRIES.map(cn => `
