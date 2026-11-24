@@ -71,6 +71,8 @@ android {
           "robolectric.dependency.repo.url",
           "https://maven-central.storage-download.googleapis.com/maven2"
         )
+        // Pin the instrumentation SDK for CI: Robolectric 4.16.1 does not resolve targetSdk 36.
+        it.systemProperty("robolectric.sdk", "35")
       }
     }
   }
