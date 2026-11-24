@@ -40,7 +40,8 @@ const I18N = {
     quakeTitle: 'زلازل قريبة (آخر ٢٤ ساعة)',
     noQuakes: 'لا زلازل مسجّلة قرب مصر في آخر ٢٤ ساعة',
     weatherNow: 'الطقس الآن',
-    legendCities: 'مدن الجواز', legendQuakes: 'زلازل',
+    legendCities: 'مدن الجواز', legendQuakes: 'زلازل', legendStories: 'قصص بردي',
+    readMore: 'اقرأ على ويكيبيديا', storiesLoading: 'بنجيب القصص…', noStories: 'مفيش قصص قريبة هنا — قرّب أو حرّك الخريطة',
     loading: 'بيحمّل…', mag: 'القوة',
     mapBody: 'خريطة العالم ببيانات حيّة مجانية: الطقس، الزلازل، أوقات الصلاة، الأعياد، وقصص البردي المثبّتة على الأماكن. المراكب الشراعية وغرف الصوت على النيل جاية هنا كمان.',
     haraTitle: 'الحارة المصرية',
@@ -65,7 +66,8 @@ const I18N = {
     quakeTitle: 'Nearby earthquakes (last 24h)',
     noQuakes: 'No recorded earthquakes near Egypt in the last 24h',
     weatherNow: 'Weather now',
-    legendCities: 'Passport cities', legendQuakes: 'Earthquakes',
+    legendCities: 'Passport cities', legendQuakes: 'Earthquakes', legendStories: 'Papyrus stories',
+    readMore: 'Read on Wikipedia', storiesLoading: 'Finding stories…', noStories: 'No stories nearby — zoom in or move the map',
     loading: 'Loading…', mag: 'Mag',
     mapBody: 'A world map fed by free live data: weather, earthquakes, prayer times, holidays, and papyrus stories pinned to real places. Nile sailboats and voice rooms land here too.',
     haraTitle: 'The Egyptian hara',
@@ -161,6 +163,7 @@ function renderMap() {
     <div class="map-legend">
       <span><i class="dot dot-city"></i>${i18n.legendCities}</span>
       <span><i class="dot dot-quake"></i>${i18n.legendQuakes}</span>
+      <span><i class="dot dot-story"></i>${i18n.legendStories}</span>
     </div>
     <div class="live-panel"><h3>🕌 ${i18n.prayerTitle}</h3><div id="prayerRows" class="rows"><span class="live-loading">${i18n.loading}</span></div></div>
     <div class="live-panel"><h3>🌋 ${i18n.quakeTitle}</h3><div id="quakeRows" class="rows"><span class="live-loading">${i18n.loading}</span></div></div>
@@ -253,6 +256,72 @@ async function loadQuakes(map) {
   } catch (e) { if (el) el.textContent = '—'; }
 }
 
+/* ---- papyrus stories: Wikipedia geosearch around the visible map ---- */
+
+let storyLayer = null;
+let storyTimer = null;
+
+function wikiHost() { return (state.lang === 'ar' ? 'ar' : 'en') + '.wikipedia.org'; }
+
+async function fetchStories(lat, lon, radius, limit) {
+  const url = 'https://' + wikiHost() + '/w/api.php?action=query&list=geosearch' +
+    '&gscoord=' + lat + '|' + lon + '&gsradius=' + radius + '&gslimit=' + limit +
+    '&format=json&origin=*';
+  const r = await fetch(url);
+  const j = await r.json();
+  return (j.query && j.query.geosearch) || [];
+}
+
+async function fetchExtracts(ids) {
+  if (!ids.length) return {};
+  const url = 'https://' + wikiHost() + '/w/api.php?action=query&prop=extracts' +
+    '&exintro&explaintext&exchars=420&pageids=' + ids.join('|') + '&format=json&origin=*';
+  const r = await fetch(url);
+  const j = await r.json();
+  return (j.query && j.query.pages) || {};
+}
+
+function storyPopupHTML(page, extract) {
+  const link = 'https://' + wikiHost() + '/?curid=' + page.pageid;
+  const text = extract ? extract.replace(/\n+/g, ' ').slice(0, 380) : '';
+  return '<div class="papyrus-popup"><div class="papyrus-title">📜 ' + page.title + '</div>' +
+    (text ? '<div class="papyrus-text">' + text + '…</div>' : '') +
+    '<a href="' + link + '" target="_blank" rel="noopener">' + t().readMore + ' ←</a></div>';
+}
+
+async function loadStories(lat, lon) {
+  if (!mapObj) return;
+  try {
+    const zoom = mapObj.getZoom();
+    const radius = zoom >= 12 ? 10000 : zoom >= 9 ? 40000 : 100000;
+    const pages = await fetchStories(lat, lon, radius, 20);
+    if (!mapObj) return;
+    if (storyLayer) { storyLayer.clearLayers(); } else { storyLayer = L.layerGroup().addTo(mapObj); }
+    if (!pages.length) return;
+    const extracts = await fetchExtracts(pages.map(p => p.pageid));
+    pages.forEach(p => {
+      const ex = extracts[p.pageid] ? extracts[p.pageid].extract : '';
+      L.marker([p.lat, p.lon], {
+        icon: L.divIcon({ className: 'story-marker', html: '📜', iconSize: [28, 28] }),
+      }).addTo(storyLayer).bindPopup(storyPopupHTML(p, ex), { maxWidth: 280 });
+    });
+  } catch (e) { /* stories are best-effort */ }
+}
+
+function watchStories() {
+  if (!mapObj) return;
+  const c0 = mapObj.getCenter();
+  loadStories(c0.lat, c0.lng);
+  mapObj.on('moveend', () => {
+    clearTimeout(storyTimer);
+    storyTimer = setTimeout(() => {
+      if (!mapObj) return;
+      const c1 = mapObj.getCenter();
+      loadStories(c1.lat, c1.lng);
+    }, 800);
+  });
+}
+
 function initMap() {
   if (typeof L === 'undefined') return;
   if (mapObj) { mapObj.remove(); mapObj = null; }
@@ -268,6 +337,7 @@ function initMap() {
   });
   loadPrayerTimes();
   loadQuakes(mapObj);
+  watchStories();
 }
 
 function render() {
@@ -311,4 +381,4 @@ render();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
-                                                                  }
+}
