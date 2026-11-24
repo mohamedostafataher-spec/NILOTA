@@ -120,6 +120,20 @@ async function initGlobe() {
     m.userData.city = city;
     world.add(m);
     markers.push(m);
+    if (city.id === 'cairo') {
+      const av = new THREE.Mesh(
+        new THREE.SphereGeometry(0.02, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0x19B6B0 })
+      );
+      av.position.copy(m.position).multiplyScalar(1.01);
+      globe.add(av);
+      const halo = new THREE.Mesh(
+        new THREE.SphereGeometry(0.032, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0x19B6B0, transparent: true, opacity: 0.25 })
+      );
+      halo.position.copy(av.position);
+      globe.add(halo);
+    }
   });
 
   // fetch + draw country borders
@@ -166,16 +180,16 @@ async function initGlobe() {
     const card = document.getElementById('globeCityCard');
     if (!card) return;
     card.style.display = 'block';
-    card.innerHTML = `<b>${city.country.flag} ${city[state.lang]}</b><br><span class="live-loading">${t().loading}</span>`;
+    card.innerHTML = `<b>${city.country.flag} ${(city[state.lang] || city.en)}</b><br><span class="live-loading">${t().loading}</span>`;
     fetch('https://api.open-meteo.com/v1/forecast?latitude=' + city.lat + '&longitude=' + city.lon +
       '&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto')
       .then(r => r.json())
       .then(j => {
         completeMission('weather');
-        card.innerHTML = `<b>${city.country.flag} ${city[state.lang]}</b><br>` +
+        card.innerHTML = `<b>${city.country.flag} ${(city[state.lang] || city.en)}</b><br>` +
           `${t().weatherNow}: ${weatherLabel(j.current.weather_code)} · ${Math.round(j.current.temperature_2m)}°C · 💨 ${Math.round(j.current.wind_speed_10m)} km/h`;
       })
-      .catch(() => { card.innerHTML = `<b>${city.country.flag} ${city[state.lang]}</b>`; });
+      .catch(() => { card.innerHTML = `<b>${city.country.flag} ${(city[state.lang] || city.en)}</b>`; });
   }
 
   let raf = 0;
