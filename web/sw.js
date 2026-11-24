@@ -1,4 +1,4 @@
-const CACHE = 'nilora-v8';
+const CACHE = 'nilora-v9';
 const SHELL = ['./', './index.html', './styles.css', './data.js', './globe.js', './app.js', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', (e) => {
