@@ -126,13 +126,13 @@ async function initGlobe() {
         new THREE.MeshBasicMaterial({ color: 0x19B6B0 })
       );
       av.position.copy(m.position).multiplyScalar(1.01);
-      globe.add(av);
+      world.add(av);
       const halo = new THREE.Mesh(
         new THREE.SphereGeometry(0.032, 12, 12),
         new THREE.MeshBasicMaterial({ color: 0x19B6B0, transparent: true, opacity: 0.25 })
       );
       halo.position.copy(av.position);
-      globe.add(halo);
+      world.add(halo);
     }
   });
 
