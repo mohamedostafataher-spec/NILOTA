@@ -54,8 +54,83 @@ const I18N = {
     unlockTitle: 'ختم جديد!',
     cities: (n) => `${n} مدينة`,
   },
-  en: {
+
+  fr: {
+    dir: 'ltr', langBtn: 'RU',
+    tabPassport: 'Passeport', tabMap: 'Carte', tabGlobe: 'Monde 3D', tabTravel: 'Voyage', tabHara: 'Hara', tabSouk: 'Souk',
+    globeTitle: 'Le monde en 3D', globeHint: 'Fais tourner le globe et touche une ville — le jour et la nuit suivent l’heure réelle',
+    travelTitle: 'Mode voyageur', chooseDest: 'Choisis ta destination…', currencyLabel: 'Monnaie',
+    phrasesTitle: 'Apprends 5 mots locaux', localTimeLabel: 'Heure locale',
+    eventTitle: 'Fête du jour dans le monde', eventClaim: 'Gagner +20 pts', eventClaimed: 'Gagné ✅',
+    weeklyTitle: 'Défi de la semaine', weeklyBody: 'Collecte 5 tampons de 3 pays différents cette semaine', weeklyReward: 'Récompense : tampon rare + 50 pts',
+    boardTitle: 'Classement (local)', youRow: 'Toi', mockNote: 'Le vrai classement en ligne arrive avec le backend',
+    noEvent: 'Pas de fête officielle aujourd’hui — reviens demain', highLow: 'Max/Min',
+    heroSub: 'Ton passeport du monde — les tampons se gagnent dans des lieux réels',
+    stampsOf: (n, t) => `${n} sur ${t} tampons`,
+    nextLevel: (name, n) => n > 0 ? `Encore ${n} tampon${n === 1 ? '' : 's'} pour «${name}»` : 'Niveau max atteint 🎉',
+    demo: 'Mode démo', demoOn: 'Démo active — touche un tampon verrouillé',
+    stampsTitle: 'Tampons', levelsTitle: 'Rangs',
+    levelReq: (n) => n === 0 ? 'Début' : `${n}+`,
+    earnedOn: (d) => `Tamponné ${d}`,
+    mapTitle: 'La carte en direct',
+    prayerTitle: 'Heures de prière — Le Caire',
+    quakeTitle: 'Séismes proches (24 h)',
+    noQuakes: 'Aucun séisme près de l’Égypte ces dernières 24 h',
+    weatherNow: 'Météo actuelle',
+    legendCities: 'Villes du passeport', legendQuakes: 'Séismes', legendStories: 'Histoires papyrus',
+    readMore: 'Lire sur Wikipédia', storiesLoading: 'Recherche d’histoires…', noStories: 'Pas d’histoires ici — zoome ou déplace la carte',
+    loading: 'Chargement…', mag: 'Mag',
+    mapBody: '', haraTitle: 'Le hara égyptien',
+    haraBody: 'Une ruelle virtuelle pour rencontrer les gens : café baladi, sons de tawla, traduction instantanée sur ton appareil.',
+    soukTitle: 'Le souk d’échange',
+    soukBody: 'Échange une histoire contre une histoire, un artisanat contre un artisanat. Un vrai échange culturel avec des voyageurs du monde entier.',
+    comingSoon: 'Bientôt',
+    tagline: 'Âme du monde — origine égyptienne',
+    missionsTitle: 'Missions du jour', points: (p) => `${p} pts`, done: 'Fait ✅',
+    rareTitle: 'Tampon rare', rareBody: 'Le Scarabée d’or — collecte 100 points',
+    shareBtn: 'Partage ton passeport', shareDone: 'Image téléchargée 🎉',
+    unlockTitle: 'Nouveau tampon !',
+    cities: (n) => `${n} villes`,
+  },
+  ru: {
     dir: 'ltr', langBtn: 'عربي',
+    tabPassport: 'Паспорт', tabMap: 'Карта', tabGlobe: 'Мир 3D', tabTravel: 'Путь', tabHara: 'Хара', tabSouk: 'Сук',
+    globeTitle: 'Мир в 3D', globeHint: 'Крути глобус и нажимай на города — день и ночь идут по настоящему времени',
+    travelTitle: 'Режим путешественника', chooseDest: 'Выбери направление…', currencyLabel: 'Валюта',
+    phrasesTitle: 'Выучи 5 местных слов', localTimeLabel: 'Местное время',
+    eventTitle: 'Сегодняшний праздник в мире', eventClaim: 'Забрать +20 очков', eventClaimed: 'Забрано ✅',
+    weeklyTitle: 'Вызов недели', weeklyBody: 'Собери 5 печатей из 3 разных стран на этой неделе', weeklyReward: 'Награда: редкая печать + 50 очков',
+    boardTitle: 'Лидеры (локально)', youRow: 'Ты', mockNote: 'Настоящий онлайн-рейтинг появится с бэкендом',
+    noEvent: 'Сегодня официального праздника нет — загляни завтра', highLow: 'Макс/Мин',
+    heroSub: 'Твой паспорт мира — печати зарабатываются в реальных местах',
+    stampsOf: (n, t) => `${n} из ${t} печатей`,
+    nextLevel: (name, n) => n > 0 ? `Ещё ${n} печатей до «${name}»` : 'Максимальный уровень 🎉',
+    demo: 'Демо-режим', demoOn: 'Демо включено — нажми на закрытую печать',
+    stampsTitle: 'Печати', levelsTitle: 'Ранги',
+    levelReq: (n) => n === 0 ? 'Старт' : `${n}+`,
+    earnedOn: (d) => `Поставлена ${d}`,
+    mapTitle: 'Живая карта',
+    prayerTitle: 'Время молитв — Каир',
+    quakeTitle: 'Ближние землетрясения (24 ч)',
+    noQuakes: 'Землетрясений рядом с Египтом за сутки нет',
+    weatherNow: 'Погода сейчас',
+    legendCities: 'Города паспорта', legendQuakes: 'Землетрясения', legendStories: 'Истории папируса',
+    readMore: 'Читать в Википедии', storiesLoading: 'Ищем истории…', noStories: 'Рядом историй нет — приблизь или подвинь карту',
+    loading: 'Загрузка…', mag: 'Маг',
+    mapBody: '', haraTitle: 'Египетская хара',
+    haraBody: 'Виртуальный переулок, где встречаются люди: кофе балади, звуки тавлы и мгновенный перевод прямо на устройстве.',
+    soukTitle: 'Сук обмена',
+    soukBody: 'Меняй историю на историю, ремесло на ремесло. Настоящий культурный обмен с путешественниками со всего мира.',
+    comingSoon: 'Скоро',
+    tagline: 'Душа мира — египетские корни',
+    missionsTitle: 'Задания дня', points: (p) => `${p} очков`, done: 'Готово ✅',
+    rareTitle: 'Редкая печать', rareBody: 'Золотой скарабей — набери 100 очков',
+    shareBtn: 'Поделись паспортом', shareDone: 'Картинка скачана 🎉',
+    unlockTitle: 'Новая печать!',
+    cities: (n) => `${n} городов`,
+  },
+  en: {
+    dir: 'ltr', langBtn: 'FR',
     tabPassport: 'Passport', tabMap: 'Map', tabGlobe: '3D World', tabTravel: 'Travel', tabHara: 'Hara', tabSouk: 'Souk',
     globeTitle: 'The 3D world', globeHint: 'Spin the globe and tap any city — day and night follow real time',
     travelTitle: 'Traveler mode', chooseDest: 'Choose your destination…', currencyLabel: 'Currency',
@@ -100,7 +175,7 @@ const state = {
   points: parseInt(localStorage.getItem('nilora.points') || '0', 10),
 };
 
-function t() { return I18N[state.lang]; }
+function t() { return Object.assign({}, I18N.en, I18N[state.lang]); }
 
 function todayKey() { return new Date().toISOString().slice(0, 10); }
 
@@ -154,7 +229,7 @@ function cartoucheSVG() {
 }
 
 function stampHTML(city, earned) {
-  const name = city[state.lang];
+  const name = (city[state.lang] || city.en);
   const date = earned ? `<div class="stamp-date">${t().earnedOn('٢٠٢٦/١١')}</div>` : '';
   const glyph = earned ? city.glyph : '🔒';
   return `
@@ -303,7 +378,7 @@ function showUnlock(city) {
     <div class="unlock-rings"><span></span><span></span><span></span></div>
     <div class="unlock-stamp">${city.glyph}</div>
     <div class="unlock-title">${t().unlockTitle}</div>
-    <div class="unlock-city">${city[state.lang]} ${city.country.flag}</div>`;
+    <div class="unlock-city">${(city[state.lang] || city.en)} ${city.country.flag}</div>`;
   document.body.appendChild(ov);
   setTimeout(() => ov.classList.add('out'), 1900);
   setTimeout(() => ov.remove(), 2400);
@@ -378,7 +453,7 @@ function weatherLabel(code) {
 }
 
 async function cityPopup(marker, city) {
-  const name = city[state.lang];
+  const name = (city[state.lang] || city.en);
   marker.bindPopup(`<b>${city.country.flag} ${name}</b><br>${t().loading}`).openPopup();
   try {
     const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + city.lat + '&longitude=' + city.lon +
@@ -522,6 +597,11 @@ function initMap() {
     }).addTo(mapObj);
     m.on('click', () => cityPopup(m, city));
   });
+  // your avatar on the map (home: Cairo)
+  L.marker([30.0444, 31.2357], {
+    icon: L.divIcon({ className: '', html: '<div class="avatar-marker">𓂀</div>', iconSize: [38, 38] }),
+    zIndexOffset: 900,
+  }).addTo(mapObj).bindTooltip(state.lang === 'ar' ? 'انت هنا' : 'You are here');
   loadPrayerTimes();
   loadQuakes(mapObj);
   watchStories();
@@ -548,7 +628,7 @@ async function loadWorldEvent() {
     const h = todays[0];
     const country = COUNTRIES.find(cn => cn.code === h.countryCode);
     const flag = country ? country.flag : '🌍';
-    const cname = country ? country[state.lang] : h.countryCode;
+    const cname = country ? (country[state.lang] || country.en) : h.countryCode;
     el.innerHTML = `<div><b>${flag} ${cname}</b> · ${h.name}</div>` +
       (st.claimed
         ? `<div>${t().eventClaimed}</div>`
@@ -575,7 +655,7 @@ function renderTravel() {
     <div class="live-panel">
       <select id="destSelect" class="dest-select">
         <option value="">${i18n.chooseDest}</option>
-        ${COUNTRIES.map(cn => `<optgroup label="${cn.flag} ${cn[state.lang]}">
+        ${COUNTRIES.map(cn => `<optgroup label="${cn.flag} ${(cn[state.lang] || cn.en)}">
           ${cn.cities.map(c => `<option value="${c.id}">${c[state.lang]}</option>`).join('')}
         </optgroup>`).join('')}
       </select>
@@ -673,6 +753,7 @@ function render() {
   document.documentElement.lang = state.lang;
   document.documentElement.dir = t().dir;
   document.getElementById('langToggle').textContent = t().langBtn;
+  updateHud();
   document.querySelectorAll('.tab').forEach(tab =>
     tab.classList.toggle('active', tab.dataset.route === route));
   document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -716,12 +797,58 @@ function render() {
   });
 }
 
+const LANG_ORDER = ['ar', 'en', 'fr', 'ru'];
+const ONBOARD_LANGS = [
+  { code: 'en', name: 'English', desc: 'English • LTR' },
+  { code: 'ar', name: 'العربية (المصرية)', desc: 'Arabic (incl. Egyptian) • RTL' },
+  { code: 'fr', name: 'Français', desc: 'French • LTR' },
+  { code: 'ru', name: 'Русский', desc: 'Russian • LTR' },
+];
+
+function showOnboarding() {
+  const el = document.createElement('div');
+  el.className = 'onboard';
+  el.id = 'onboard';
+  el.innerHTML = `
+    <div style="color:var(--gold);letter-spacing:4px;font-size:12px;font-weight:700">NILORA</div>
+    <div class="onboard-title">Select Your Language</div>
+    <div class="onboard-sub">Arabic supports full Right-to-Left (RTL) layout. English, French, and Russian use Left-to-Right (LTR).</div>
+    ${ONBOARD_LANGS.map((l, i) => `
+      <button class="onboard-lang${i === 0 ? ' sel' : ''}" data-lang="${l.code}">
+        <span class="ol-name">${l.name}</span><span class="ol-desc">${l.desc}</span>
+      </button>`).join('')}
+    <div class="onboard-foot">NILORA • GLOBAL SOUL — EGYPTIAN ORIGIN<br/>ONE APP, ONE WORLD, NO LANGUAGE BARRIERS</div>
+    <button class="onboard-next" id="onboardNext">Next</button>`;
+  document.body.appendChild(el);
+  el.querySelectorAll('.onboard-lang').forEach(b => b.addEventListener('click', () => {
+    el.querySelectorAll('.onboard-lang').forEach(x => x.classList.remove('sel'));
+    b.classList.add('sel');
+  }));
+  el.querySelector('#onboardNext').addEventListener('click', () => {
+    state.lang = el.querySelector('.onboard-lang.sel').dataset.lang;
+    localStorage.setItem('nilora.lang', state.lang);
+    el.remove();
+    completeMission('languages');
+    render();
+  });
+}
+
+function updateHud() {
+  const lv = Math.floor(state.points / 100) + 1;
+  const el = document.getElementById('hudLevel');
+  const pp = document.getElementById('hudPoints');
+  if (el) el.textContent = 'Lv ' + lv;
+  if (pp) pp.textContent = state.points + ' pts';
+}
+
 document.getElementById('langToggle').addEventListener('click', () => {
-  state.lang = state.lang === 'ar' ? 'en' : 'ar';
+  state.lang = LANG_ORDER[(LANG_ORDER.indexOf(state.lang) + 1) % LANG_ORDER.length];
   localStorage.setItem('nilora.lang', state.lang);
   completeMission('languages');
   render();
 });
+
+if (!localStorage.getItem('nilora.lang')) showOnboarding();
 
 window.addEventListener('hashchange', render);
 render();
