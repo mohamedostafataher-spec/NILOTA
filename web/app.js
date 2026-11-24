@@ -48,6 +48,25 @@ const I18N = {
     soukBody: 'بدّل قصة بقصة، وصنعة بصنعة. تبادل ثقافي حقيقي مع مسافرين من كل العالم — زي رسايل Bottled بس بالمصري.',
     comingSoon: 'قريبًا',
     tagline: 'روح العالم — بأصل مصري',
+    tabHome: 'الرئيسية', tabCards: 'بطاقات',
+    homeWelcome: 'أهلاً يا مسافر', homeSub: 'منصة المغامرة والتواصل العالمية — بأصل مصري',
+    hubJourney: 'رحلتي', hubJourneySub: 'الجواز والأختام والرتب',
+    hubMap: 'الخريطة الحيّة', hubMapSub: 'طقس وزلازل ومواقيت وقصص',
+    hubGlobe: 'العالم ٣D', hubGlobeSub: 'الكوكب الحقيقي بنور الشمس دلوقتي',
+    hubTravel: 'وضع المسافر', hubTravelSub: 'عملة ووقت وكلمات البلد',
+    hubCards: 'بطاقات العالم', hubCardsSub: 'سيب رسالة في مكان… مسافر تاني يلاقيها',
+    hubMissions: 'مهام وتحديات', hubMissionsSub: 'نقاط ورتب وجوايز',
+    searchPlaceholder: 'دوّر على مدينة أو دولة…',
+    cardsTitle: 'بطاقات العالم', cardsSub: 'رسالة قصيرة متعلّقة في مكان على الخريطة — مسافر تاني يعدّي يلاقيها',
+    cardNew: 'ابعت بطاقة جديدة', cardWhere: 'اختار المكان', cardMsgPh: 'اكتب رسالتك (١٤٠ حرف)…', cardSend: 'علّقها على الخريطة',
+    cardYours: 'بطاقاتك', cardFound: 'بطاقات لقيتها', cardJourney: 'رحلة البطاقة',
+    cardReport: 'بلاغ', cardBlock: 'حظر', cardSent: 'اتعلّقت على الخريطة 📍',
+    cardEmpty: 'لسه مفيش بطاقات — ابعت أول واحدة',
+    cardFrom: (c) => `مسافر من ${c}`,
+    memoryTitle: 'ذاكرة نيلورا', memorySub: 'كل خطوة في رحلتك متسجّلة هنا',
+    memoryEmpty: 'الذاكرة لسه فاضية — ابدأ اجمع أختام ونقاط',
+    memStamp: (n) => `ختم جديد: ${n}`, memMission: (n, p) => `مهمة خلصت: ${n} (+${p})`, memStart: 'بداية الرحلة',
+
     missionsTitle: 'مهام النهاردة', points: (p) => `${p} نقطة`, done: 'تم ✅',
     rareTitle: 'ختم نادر', rareBody: 'الجعران الذهبي — اجمع ١٠٠ نقطة',
     shareBtn: 'شارك جوازك', shareDone: 'اتنزّلت الصورة 🎉',
@@ -57,6 +76,14 @@ const I18N = {
 
   fr: {
     dir: 'ltr', langBtn: 'RU',
+    tabHome: 'Accueil', tabCards: 'Cartes',
+    homeWelcome: 'Bienvenue, voyageur', homeSub: 'La plateforme mondiale d’aventure et de connexion — origine égyptienne',
+    searchPlaceholder: 'Cherche une ville ou un pays…',
+    cardsTitle: 'Cartes du monde', cardsSub: 'Un court message épinglé sur la carte — un autre voyageur le trouve',
+    cardNew: 'Envoyer une carte', cardWhere: 'Choisis le lieu', cardMsgPh: 'Ton message (140 car.)…', cardSend: 'Épingler sur la carte',
+    cardYours: 'Tes cartes', cardFound: 'Cartes trouvées', cardJourney: 'Voyage de la carte',
+    cardReport: 'Signaler', cardBlock: 'Bloquer', cardSent: 'Épinglée 📍', cardEmpty: 'Pas encore de cartes — envoie la première',
+    memoryTitle: 'Mémoire NILORA', memorySub: 'Chaque étape de ton voyage est enregistrée ici',
     tabPassport: 'Passeport', tabMap: 'Carte', tabGlobe: 'Monde 3D', tabTravel: 'Voyage', tabHara: 'Hara', tabSouk: 'Souk',
     globeTitle: 'Le monde en 3D', globeHint: 'Fais tourner le globe et touche une ville — le jour et la nuit suivent l’heure réelle',
     travelTitle: 'Mode voyageur', chooseDest: 'Choisis ta destination…', currencyLabel: 'Monnaie',
@@ -94,6 +121,14 @@ const I18N = {
   },
   ru: {
     dir: 'ltr', langBtn: 'عربي',
+    tabHome: 'Домой', tabCards: 'Открытки',
+    homeWelcome: 'Привет, путешественник', homeSub: 'Мировая платформа приключений и общения — египетские корни',
+    searchPlaceholder: 'Найди город или страну…',
+    cardsTitle: 'Открытки мира', cardsSub: 'Короткое сообщение, приколотое к точке на карте — другой путешественник его найдёт',
+    cardNew: 'Отправить открытку', cardWhere: 'Выбери место', cardMsgPh: 'Твоё сообщение (140 зн.)…', cardSend: 'Приколоть на карту',
+    cardYours: 'Твои открытки', cardFound: 'Найденные открытки', cardJourney: 'Путь открытки',
+    cardReport: 'Жалоба', cardBlock: 'Блок', cardSent: 'Приколота 📍', cardEmpty: 'Открыток пока нет — отправь первую',
+    memoryTitle: 'Память NILORA', memorySub: 'Каждый шаг твоего пути записан здесь',
     tabPassport: 'Паспорт', tabMap: 'Карта', tabGlobe: 'Мир 3D', tabTravel: 'Путь', tabHara: 'Хара', tabSouk: 'Сук',
     globeTitle: 'Мир в 3D', globeHint: 'Крути глобус и нажимай на города — день и ночь идут по настоящему времени',
     travelTitle: 'Режим путешественника', chooseDest: 'Выбери направление…', currencyLabel: 'Валюта',
@@ -160,6 +195,25 @@ const I18N = {
     soukBody: 'Trade a story for a story, a craft for a craft. Real cultural exchange with travelers worldwide — Bottled letters, Egyptian style.',
     comingSoon: 'Coming soon',
     tagline: 'Global soul — Egyptian origin',
+    tabHome: 'Home', tabCards: 'Postcards',
+    homeWelcome: 'Welcome, traveler', homeSub: 'The global adventure and connection platform — Egyptian origin',
+    hubJourney: 'My journey', hubJourneySub: 'Passport, stamps and ranks',
+    hubMap: 'Live map', hubMapSub: 'Weather, quakes, prayer times, stories',
+    hubGlobe: '3D world', hubGlobeSub: 'The real planet under live sunlight',
+    hubTravel: 'Traveler mode', hubTravelSub: 'Currency, time and local words',
+    hubCards: 'World postcards', hubCardsSub: 'Leave a message in a place… another traveler finds it',
+    hubMissions: 'Missions and challenges', hubMissionsSub: 'Points, ranks and rewards',
+    searchPlaceholder: 'Search a city or country…',
+    cardsTitle: 'World postcards', cardsSub: 'A short message pinned to a map point — another traveler passing by finds it',
+    cardNew: 'Send a new postcard', cardWhere: 'Choose the place', cardMsgPh: 'Write your message (140 chars)…', cardSend: 'Pin it on the map',
+    cardYours: 'Your postcards', cardFound: 'Postcards you found', cardJourney: 'Postcard journey',
+    cardReport: 'Report', cardBlock: 'Block', cardSent: 'Pinned on the map 📍',
+    cardEmpty: 'No postcards yet — send the first one',
+    cardFrom: (c) => `A traveler from ${c}`,
+    memoryTitle: 'NILORA memory', memorySub: 'Every step of your journey is recorded here',
+    memoryEmpty: 'Memory is still empty — start collecting stamps and points',
+    memStamp: (n) => `New stamp: ${n}`, memMission: (n, p) => `Mission done: ${n} (+${p})`, memStart: 'The journey begins',
+
     missionsTitle: "Today's missions", points: (p) => `${p} pts`, done: 'Done ✅',
     rareTitle: 'Rare stamp', rareBody: 'The Golden Scarab — collect 100 points',
     shareBtn: 'Share your passport', shareDone: 'Image downloaded 🎉',
@@ -207,6 +261,14 @@ function completeMission(id) {
   const pts = MISSION_POOL.find(x => x.id === id).pts;
   state.points += pts;
   localStorage.setItem('nilora.points', String(state.points));
+  const mDef = MISSION_POOL.find(x => x.id === id);
+  logMemory('mission', t().memMission ? t().memMission(mDef[state.lang] || mDef.en, pts) : (mDef.en + ' +' + pts));
+}
+
+function logMemory(type, text) {
+  const log = JSON.parse(localStorage.getItem('nilora.memory') || '[]');
+  log.push({ t: Date.now(), type, text });
+  localStorage.setItem('nilora.memory', JSON.stringify(log.slice(-200)));
 }
 
 function earnedIds() { return state.demo ? state.demoStamps : []; }
@@ -708,6 +770,140 @@ function renderGlobe() {
     <div class="soon-card" style="text-align:center"><p style="color:var(--gold-dark);font-weight:700">${i18n.tagline}</p></div>`;
 }
 
+
+/* ---- home hub (AI Studio style) ---- */
+function renderHome() {
+  const i18n = t();
+  const lvl = levelFor(earnedCount());
+  return `
+    <div class="home-hero">
+      <div class="home-hello">${i18n.homeWelcome} 𓂀</div>
+      <div class="home-sub">${i18n.homeSub}</div>
+      <input id="homeSearch" class="home-search" placeholder="${i18n.searchPlaceholder}" />
+      <div id="searchResults" class="search-results"></div>
+    </div>
+    <div class="hub-grid">
+      <a class="hub-card" href="#/passport"><span class="hub-ico">🪪</span><b>${i18n.hubJourney}</b><small>${i18n.hubJourneySub}</small></a>
+      <a class="hub-card" href="#/map"><span class="hub-ico">🗺️</span><b>${i18n.hubMap}</b><small>${i18n.hubMapSub}</small></a>
+      <a class="hub-card" href="#/globe"><span class="hub-ico">🌍</span><b>${i18n.hubGlobe}</b><small>${i18n.hubGlobeSub}</small></a>
+      <a class="hub-card" href="#/travel"><span class="hub-ico">✈️</span><b>${i18n.hubTravel}</b><small>${i18n.hubTravelSub}</small></a>
+      <a class="hub-card" href="#/cards"><span class="hub-ico">📮</span><b>${i18n.hubCards}</b><small>${i18n.hubCardsSub}</small></a>
+      <a class="hub-card" href="#/memory"><span class="hub-ico">📜</span><b>${i18n.memoryTitle}</b><small>${i18n.memorySub}</small></a>
+    </div>
+    <div class="soon-card" style="text-align:center"><p style="color:var(--gold);font-weight:700">${i18n.tagline}</p></div>`;
+}
+
+function homeSearch(q) {
+  const box = document.getElementById('searchResults');
+  if (!box) return;
+  q = q.trim().toLowerCase();
+  if (q.length < 2) { box.innerHTML = ''; return; }
+  const hits = ALL_CITIES.filter(city =>
+    city.en.toLowerCase().includes(q) || (city.ar || '').includes(q) ||
+    city.country.en.toLowerCase().includes(q) || (city.country.ar || '').includes(q)
+  ).slice(0, 8);
+  box.innerHTML = hits.map(city =>
+    `<a class="search-hit" href="#/travel" data-city="${city.id}">
+       <span>${city.country.flag} <b>${city[state.lang] || city.en}</b></span><small>${city.country[state.lang] || city.country.en}</small>
+     </a>`).join('') || `<div class="search-hit"><small>…</small></div>`;
+  box.querySelectorAll('.search-hit[data-city]').forEach(a => a.addEventListener('click', () => {
+    sessionStorage.setItem('nilora.dest', a.dataset.city);
+  }));
+}
+
+/* ---- world postcards (message to a traveler) ---- */
+const CARD_SEED_SENDERS = ['Italy', 'Japan', 'Brazil', 'France', 'Turkey', 'Spain'];
+
+function myCards() { return JSON.parse(localStorage.getItem('nilora.cards') || '[]'); }
+function foundCards() { return JSON.parse(localStorage.getItem('nilora.cardsFound') || '[]'); }
+
+function seedFoundCards() {
+  if (localStorage.getItem('nilora.cardsFound')) return;
+  const seeds = [
+    { id: 's1', cityId: 'rome', text: 'Rome at sunrise is worth every early alarm. Leave something kind here too.', from: 'Italy', journey: ['rome', 'athens', 'cairo'] },
+    { id: 's2', cityId: 'tokyo', text: 'Found this spot by getting lost on purpose. 10/10 recommend.', from: 'Japan', journey: ['tokyo', 'kyoto', 'beijing'] },
+    { id: 's3', cityId: 'rio', text: 'The ocean answers every question if you listen long enough.', from: 'Brazil', journey: ['rio', 'cancun'] },
+  ];
+  localStorage.setItem('nilora.cardsFound', JSON.stringify(seeds));
+}
+
+function cardJourneyHTML(card) {
+  const names = (card.journey || [card.cityId]).map(id => {
+    const city = ALL_CITIES.find(x => x.id === id);
+    return city ? (city[state.lang] || city.en) : id;
+  });
+  return names.map(n => `<span class="journey-hop">${n}</span>`).join('<span class="journey-arrow">←</span>');
+}
+
+function renderCards() {
+  const i18n = t();
+  seedFoundCards();
+  const mine = myCards();
+  const found = foundCards();
+  const cardRow = (card, own) => {
+    const city = ALL_CITIES.find(x => x.id === card.cityId);
+    const cname = city ? (city[state.lang] || city.en) : card.cityId;
+    const flag = city ? city.country.flag : '📍';
+    return `
+      <div class="postcard">
+        <div class="postcard-head">
+          <span>${flag} <b>${cname}</b></span>
+          <small>${own ? '' : i18n.cardFrom(card.from)}</small>
+        </div>
+        <p class="postcard-text">${card.text.replace(/</g, '&lt;')}</p>
+        <div class="postcard-journey">${i18n.cardJourney}: ${cardJourneyHTML(card)}</div>
+        ${own ? '' : `<div class="postcard-actions"><button class="pc-act" data-report="${card.id}">🚩 ${i18n.cardReport}</button><button class="pc-act" data-block="${card.id}">⛔ ${i18n.cardBlock}</button></div>`}
+      </div>`;
+  };
+  return `
+    <h2 class="section-title">${i18n.cardsTitle}</h2>
+    <p class="cards-sub">${i18n.cardsSub}</p>
+    <div class="live-panel">
+      <h3>${i18n.cardNew}</h3>
+      <select id="cardCity"><option value="">${i18n.cardWhere}…</option>
+        ${ALL_CITIES.map(ct => `<option value="${ct.id}">${ct.country.flag} ${ct[state.lang] || ct.en}</option>`).join('')}
+      </select>
+      <textarea id="cardText" maxlength="140" rows="2" placeholder="${i18n.cardMsgPh}"></textarea>
+      <button id="cardSend" class="btn-gold">${i18n.cardSend}</button>
+    </div>
+    <h2 class="section-title">${i18n.cardYours}</h2>
+    ${mine.length ? mine.map(cd => cardRow(cd, true)).join('') : `<p class="cards-empty">${i18n.cardEmpty}</p>`}
+    <h2 class="section-title">${i18n.cardFound}</h2>
+    ${found.map(cd => cardRow(cd, false)).join('')}`;
+}
+
+function sendCard() {
+  const cityId = document.getElementById('cardCity').value;
+  const text = document.getElementById('cardText').value.trim();
+  if (!cityId || !text) return;
+  const mine = myCards();
+  mine.unshift({ id: 'c' + Date.now(), cityId, text, journey: [cityId], ts: Date.now() });
+  localStorage.setItem('nilora.cards', JSON.stringify(mine));
+  state.points += 15;
+  localStorage.setItem('nilora.points', String(state.points));
+  const city = ALL_CITIES.find(x => x.id === cityId);
+  logMemory('card', (city ? (city[state.lang] || city.en) : cityId) + ': ' + text.slice(0, 40));
+  render();
+}
+
+/* ---- NILORA memory ---- */
+function renderMemory() {
+  const i18n = t();
+  const log = JSON.parse(localStorage.getItem('nilora.memory') || '[]');
+  const ico = { stamp: '🔖', mission: '✅', card: '📮' };
+  const items = log.slice().reverse().map(e => `
+    <div class="memory-row">
+      <span class="memory-ico">${ico[e.type] || '•'}</span>
+      <div><div class="memory-text">${String(e.text).replace(/</g, '&lt;')}</div>
+      <small class="memory-time">${new Date(e.t).toLocaleString(state.lang === 'ar' ? 'ar-EG' : state.lang)}</small></div>
+    </div>`).join('');
+  return `
+    <h2 class="section-title">${i18n.memoryTitle}</h2>
+    <p class="cards-sub">${i18n.memorySub}</p>
+    ${items || `<p class="cards-empty">${i18n.memoryEmpty}</p>`}
+    <div class="memory-row"><span class="memory-ico">☥</span><div><div class="memory-text">${i18n.memStart}</div></div></div>`;
+}
+
 /* ---- screens ---- */
 
 function renderMap() {
@@ -744,7 +940,7 @@ function renderSoon(kind) {
 
 function render() {
   const hashParts = location.hash.replace('#/', '').split('?');
-  const route = hashParts[0] || 'passport';
+  const route = hashParts[0] || 'home';
   if ((hashParts[1] || '').includes('demo=1') && !state.demo) {
     state.demo = true;
     localStorage.setItem('nilora.demo', '1');
@@ -765,6 +961,9 @@ function render() {
   if (route === 'passport') app.innerHTML = renderPassport();
   else if (route === 'travel') app.innerHTML = renderTravel();
   else if (route === 'globe') app.innerHTML = renderGlobe();
+  else if (route === 'cards') app.innerHTML = renderCards();
+  else if (route === 'memory') app.innerHTML = renderMemory();
+  else if (route === 'home') app.innerHTML = renderHome();
   else app.innerHTML = renderSoon(route);
   if (route === 'map') { initMap(); loadWorldEvent(); }
   if (route === 'globe') initGlobe();
@@ -779,6 +978,13 @@ function render() {
     render();
   });
 
+  const cardSendBtn = document.getElementById('cardSend');
+  if (cardSendBtn) cardSendBtn.addEventListener('click', sendCard);
+  document.querySelectorAll('[data-report]').forEach(b => b.addEventListener('click', () => { b.textContent = '✅'; b.disabled = true; }));
+  document.querySelectorAll('[data-block]').forEach(b => b.addEventListener('click', () => { b.textContent = '✅'; b.disabled = true; }));
+  const hs = document.getElementById('homeSearch');
+  if (hs) hs.addEventListener('input', () => homeSearch(hs.value));
+
   const shareBtn = document.getElementById('shareBtn');
   if (shareBtn) shareBtn.addEventListener('click', sharePassport);
 
@@ -791,6 +997,7 @@ function render() {
       state.demoStamps.push(id);
       localStorage.setItem('nilora.demoStamps', JSON.stringify(state.demoStamps));
       const city = ALL_CITIES.find(c => c.id === id);
+      logMemory('stamp', t().memStamp ? t().memStamp(city[state.lang] || city.en) : city.en);
       showUnlock(city);
       setTimeout(render, 2000);
     });
