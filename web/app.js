@@ -73,7 +73,16 @@ const I18N = {
     savedTitle: 'الأماكن المحفوظة', savedEmpty: 'لسه محفظتش أماكن — احفظ من وضع المسافر',
     savePlace: 'احفظ المكان', savedDone: 'اتحفظ ✅', savedRemove: 'شيل',
     eventsTitle: 'أحداث العالم الجاية', eventsSub: 'الأعياد الرسمية الجاية حوالين العالم',
-    aboutTitle: 'عن نيلورا', aboutVersion: 'نسخة الويب v7 — شغالة كلها بدون مفاتيح API',
+    aboutTitle: 'عن نيلورا', aboutVersion: 'نسخة الويب v9 — شغالة كلها بدون مفاتيح API',
+    tabExplore: 'استكشف', tabChallenges: 'التحديات', tabJourney: 'رحلتي',
+    splashTag: 'العالم مغامرتك', splashStart: 'ابدأ الاستكشاف', splashContinue: 'كمل رحلتي', splashSkip: 'تخطي',
+    exploreTitle: 'استكشف العالم', viewGlobe: 'الكوكب 3D', viewMap: 'الخريطة الحية',
+    challengesTitle: 'التحديات والمهام', journeyTitle2: 'رحلتي مع نيلورا',
+    sampleBadge: 'محتوى تجريبي', demoBadge: 'تجريبي',
+    srcLabel: (name, time) => `المصدر: ${name} · محدث ${time}`,
+    featTitle: 'اكتشاف اليوم', pulseTitle: 'نبض العالم', dailyMission: 'مهمة النهاردة',
+    stampLegend: 'الأختام بتتجمع بالاستكشاف الافتراضي · 🔖 مكان محفوظ · ✈️ زيارة حقيقية (إقرار ذاتي)',
+    markVisited: 'زرت المكان ده فعلاً', visitedDone: 'متسجلة كزيارة حقيقية ✈️',
 
     missionsTitle: 'مهام النهاردة', points: (p) => `${p} نقطة`, done: 'تم ✅',
     rareTitle: 'ختم نادر', rareBody: 'الجعران الذهبي — اجمع ١٠٠ نقطة',
@@ -228,7 +237,16 @@ const I18N = {
     savedTitle: 'Saved places', savedEmpty: 'No saved places yet — save from traveler mode',
     savePlace: 'Save this place', savedDone: 'Saved ✅', savedRemove: 'Remove',
     eventsTitle: 'Upcoming world events', eventsSub: 'Official public holidays coming up around the world',
-    aboutTitle: 'About NILORA', aboutVersion: 'Web v7 — fully keyless, no API keys anywhere',
+    aboutTitle: 'About NILORA', aboutVersion: 'Web v9 — fully keyless, no API keys anywhere',
+    tabExplore: 'Explore', tabChallenges: 'Challenges', tabJourney: 'My Journey',
+    splashTag: 'THE WORLD IS YOUR ADVENTURE', splashStart: 'START EXPLORING', splashContinue: 'CONTINUE MY JOURNEY', splashSkip: 'Skip',
+    exploreTitle: 'Explore the world', viewGlobe: '3D Planet', viewMap: 'Live map',
+    challengesTitle: 'Challenges & missions', journeyTitle2: 'My NILORA journey',
+    sampleBadge: 'Sample content', demoBadge: 'Demo',
+    srcLabel: (name, time) => `Source: ${name} · updated ${time}`,
+    featTitle: 'Featured discovery', pulseTitle: 'World pulse', dailyMission: "Today's mission",
+    stampLegend: 'Stamps are earned by virtual exploration · 🔖 saved place · ✈️ physically visited (self-declared)',
+    markVisited: 'I physically visited this place', visitedDone: 'Marked as visited ✈️',
 
     missionsTitle: "Today's missions", points: (p) => `${p} pts`, done: 'Done ✅',
     rareTitle: 'Rare stamp', rareBody: 'The Golden Scarab — collect 100 points',
@@ -310,8 +328,11 @@ function stampHTML(city, earned) {
   const name = (city[state.lang] || city.en);
   const date = earned ? `<div class="stamp-date">${t().earnedOn('٢٠٢٦/١١')}</div>` : '';
   const glyph = earned ? city.glyph : '🔒';
+  const savedB = savedPlaces().includes(city.id) ? '<span class="stamp-flag">🔖</span>' : '';
+  const visitB = visitedPlaces().includes(city.id) ? '<span class="stamp-flag stamp-flag-v">✈️</span>' : '';
   return `
     <div class="stamp ${earned ? 'earned' : 'locked'}" data-stamp="${city.id}">
+      ${savedB}${visitB}
       <div class="stamp-ring"><span class="stamp-glyph">${glyph}</span></div>
       <div class="stamp-name">${name}</div>
       ${date}
@@ -362,9 +383,6 @@ function renderPassport() {
   const pct = Math.round((n / TOTAL_STAMPS) * 100);
   const need = nxt ? nxt.min - n : 0;
   const ids = earnedIds();
-  const missions = dailyMissions();
-  const mState = missionState();
-  const pts = state.points;
   return `
     <section class="hero">
       ${cartoucheSVG()}
@@ -381,30 +399,8 @@ function renderPassport() {
       </div>
     </section>
 
-    <h2 class="section-title">${t().missionsTitle}</h2>
-    <div class="missions">
-      ${missions.map(m => {
-        const done = mState.done.includes(m.id);
-        return `<div class="mission-row ${done ? 'done' : ''}">
-          <span class="mission-pts">+${m.pts}</span>
-          <span class="mission-text">${m[lang]}</span>
-          <span class="mission-state">${done ? t().done : ''}</span>
-        </div>`;
-      }).join('')}
-      <div class="mission-row rare ${pts >= 100 ? 'done' : ''}">
-        <span class="mission-pts">🪲</span>
-        <span class="mission-text"><b>${t().rareTitle}:</b> ${t().rareBody}</span>
-        <span class="mission-state">${pts >= 100 ? t().done : `${Math.min(pts,100)}/100`}</span>
-      </div>
-    </div>
-
-    <h2 class="section-title">${t().weeklyTitle}</h2>
-    ${weeklyChallengeHTML(n)}
-
-    <h2 class="section-title">${t().boardTitle}</h2>
-    ${leaderboardHTML(pts)}
-
     <h2 class="section-title">${t().stampsTitle}</h2>
+    <p class="stamp-legend">${t().stampLegend}</p>
     ${COUNTRIES.map(cn => `
       <div class="country-block">
         <div class="country-head">${cn.flag} ${cn[lang]} <span class="country-count">${cn.cities.filter(c => ids.includes(c.id)).length}/${cn.cities.length}</span></div>
@@ -569,7 +565,7 @@ async function loadPrayerTimes() {
       ? [['الفجر','Fajr'],['الشروق','Sunrise'],['الظهر','Dhuhr'],['العصر','Asr'],['المغرب','Maghrib'],['العشاء','Isha']]
       : [['Fajr','Fajr'],['Sunrise','Sunrise'],['Dhuhr','Dhuhr'],['Asr','Asr'],['Maghrib','Maghrib'],['Isha','Isha']];
     el.innerHTML = names.map(([label, key]) =>
-      `<div><b>${label}</b> · ${tt[key]}</div>`).join('');
+      `<div><b>${label}</b> · ${tt[key]}</div>`).join('') + srcNote('Aladhan');
     completeMission('prayer');
   } catch (e) { el.textContent = '—'; }
 }
@@ -589,9 +585,9 @@ async function loadQuakes(map) {
         radius: 4 + f.properties.mag, color: '#B83924', weight: 1.5, fillOpacity: 0.35,
       }).addTo(map).bindPopup(`${t().mag} ${f.properties.mag} · ${f.properties.place}`);
     });
-    if (el) el.innerHTML = near.length
+    if (el) el.innerHTML = (near.length
       ? near.map(f => `<div><b>${t().mag} ${f.properties.mag}</b> · ${f.properties.place}</div>`).join('')
-      : t().noQuakes;
+      : t().noQuakes) + srcNote('USGS');
   } catch (e) { if (el) el.textContent = '—'; }
 }
 
@@ -707,7 +703,7 @@ async function loadWorldEvent() {
     const country = COUNTRIES.find(cn => cn.code === h.countryCode);
     const flag = country ? country.flag : '🌍';
     const cname = country ? (country[state.lang] || country.en) : h.countryCode;
-    el.innerHTML = `<div><b>${flag} ${cname}</b> · ${h.name}</div>` +
+    el.innerHTML = `<div><b>${flag} ${cname}</b> · ${h.name}</div>` + srcNote('Nager.Date') +
       (st.claimed
         ? `<div>${t().eventClaimed}</div>`
         : `<button id="eventClaimBtn" class="claim-btn" type="button">${t().eventClaim}</button>`);
@@ -774,8 +770,19 @@ async function loadDestination(cityId) {
         `<div class="phrase-row"><b>${w[0]}</b> <span class="phrase-tr">(${w[1]})</span> — ${w[2]}</div>`).join('')
     : '';
   const isSaved = savedPlaces().includes(cityId);
-  el.innerHTML = weatherHtml + timeHtml + currHtml + wordsHtml +
-    `<button class="btn-gold" id="savePlaceBtn" style="margin-top:10px">${isSaved ? t().savedDone : t().savePlace}</button>`;
+  const isVisited = visitedPlaces().includes(cityId);
+  el.innerHTML = weatherHtml + srcNote('Open-Meteo') + timeHtml + currHtml + srcNote('open.er-api.com') + wordsHtml +
+    `<div class="dest-actions"><button class="btn-gold" id="savePlaceBtn">${isSaved ? t().savedDone : t().savePlace}</button>
+    <button class="btn-ghost" id="visitBtn">${isVisited ? t().visitedDone : t().markVisited}</button></div>`;
+  const vb = document.getElementById('visitBtn');
+  if (vb && !isVisited) vb.addEventListener('click', () => {
+    const v = visitedPlaces();
+    v.push(cityId);
+    localStorage.setItem('nilora.visited', JSON.stringify(v));
+    logMemory('stamp', '✈️ ' + (city[state.lang] || city.en));
+    vb.textContent = t().visitedDone;
+    vb.disabled = true;
+  });
   const sp = document.getElementById('savePlaceBtn');
   if (sp && !isSaved) sp.addEventListener('click', () => {
     const s = savedPlaces();
@@ -801,30 +808,76 @@ function renderGlobe() {
 }
 
 
+/* ---- explore: 3D planet + live map ---- */
+let exploreView = 'globe';
+
+function renderExplore(view) {
+  const i18n = t();
+  return `
+    <h2 class="section-title">${i18n.exploreTitle}</h2>
+    <div class="seg">
+      <button class="seg-btn ${view === 'globe' ? 'on' : ''}" data-view="globe">🌍 ${i18n.viewGlobe}</button>
+      <button class="seg-btn ${view === 'map' ? 'on' : ''}" data-view="map">🗺️ ${i18n.viewMap}</button>
+    </div>
+    <div id="globe" class="globe-wrap" style="display:${view === 'globe' ? 'block' : 'none'}"></div>
+    <div id="map" style="display:${view === 'map' ? 'block' : 'none'}"></div>
+    <div class="map-legend">
+      <span><i class="dot dot-city"></i>${i18n.legendCities}</span>
+      <span><i class="dot dot-quake"></i>${i18n.legendQuakes}</span>
+      <span><i class="dot dot-story"></i>${i18n.legendStories}</span>
+    </div>
+    <div id="globeCityCard" class="live-panel" style="display:none"></div>
+    <div class="live-panel" id="eventPanel"><h3>🎉 ${i18n.eventTitle}</h3><div id="eventRows" class="rows"><span class="live-loading">${i18n.loading}</span></div></div>
+    <div class="live-panel"><h3>🕌 ${i18n.prayerTitle}</h3><div id="prayerRows" class="rows"><span class="live-loading">${i18n.loading}</span></div></div>
+    <div class="live-panel"><h3>🌋 ${i18n.quakeTitle}</h3><div id="quakeRows" class="rows"><span class="live-loading">${i18n.loading}</span></div></div>`;
+}
+
+function initExplore(view) {
+  exploreView = view;
+  document.querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('on', b.dataset.view === view));
+  const g = document.getElementById('globe'), m = document.getElementById('map');
+  if (!g || !m) return;
+  if (view === 'globe') {
+    g.style.display = 'block'; m.style.display = 'none';
+    if (mapObj) { mapObj.remove(); mapObj = null; }
+    if (!globeState) initGlobe();
+  } else {
+    g.style.display = 'none'; m.style.display = 'block';
+    if (globeState) { globeState.dispose(); globeState = null; }
+    if (!mapObj) initMap();
+  }
+  loadWorldEvent();
+}
+
 /* ---- home hub (AI Studio style) ---- */
 function renderHome() {
   const i18n = t();
-  const lvl = levelFor(earnedCount());
+  const n = earnedCount(), lvl = levelFor(n);
+  const missions = dailyMissions();
+  const mState = missionState();
+  const nextM = missions.find(m => !mState.done.includes(m.id));
+  const feat = ALL_CITIES[Math.floor(Date.now() / 86400000) % ALL_CITIES.length];
   return `
     <div class="home-hero">
+      <div class="home-earth"><div class="home-earth-img"></div></div>
       <div class="home-hello">${i18n.homeWelcome} 𓂀</div>
       <div class="home-sub">${i18n.homeSub}</div>
       <input id="homeSearch" class="home-search" placeholder="${i18n.searchPlaceholder}" />
       <div id="searchResults" class="search-results"></div>
     </div>
-    <div class="hub-grid">
-      <a class="hub-card" href="#/passport"><span class="hub-ico">🪪</span><b>${i18n.hubJourney}</b><small>${i18n.hubJourneySub}</small></a>
-      <a class="hub-card" href="#/map"><span class="hub-ico">🗺️</span><b>${i18n.hubMap}</b><small>${i18n.hubMapSub}</small></a>
-      <a class="hub-card" href="#/globe"><span class="hub-ico">🌍</span><b>${i18n.hubGlobe}</b><small>${i18n.hubGlobeSub}</small></a>
-      <a class="hub-card" href="#/travel"><span class="hub-ico">✈️</span><b>${i18n.hubTravel}</b><small>${i18n.hubTravelSub}</small></a>
-      <a class="hub-card" href="#/cards"><span class="hub-ico">📮</span><b>${i18n.hubCards}</b><small>${i18n.hubCardsSub}</small></a>
-      <a class="hub-card" href="#/memory"><span class="hub-ico">📜</span><b>${i18n.memoryTitle}</b><small>${i18n.memorySub}</small></a>
-      <a class="hub-card" href="#/souk"><span class="hub-ico">🏺</span><b>${i18n.soukTitle2}</b><small>${i18n.soukSub2}</small></a>
-      <a class="hub-card" href="#/events"><span class="hub-ico">🎉</span><b>${i18n.eventsTitle}</b><small>${i18n.eventsSub}</small></a>
-      <a class="hub-card" href="#/saved"><span class="hub-ico">⭐</span><b>${i18n.savedTitle}</b><small>${i18n.savedEmpty}</small></a>
-      <a class="hub-card" href="#/about"><span class="hub-ico">☥</span><b>${i18n.aboutTitle}</b><small>${i18n.aboutVersion}</small></a>
+    <div class="progress-strip">
+      <span>🔖 ${n}/${TOTAL_STAMPS}</span><span>⭐ ${i18n.points(state.points)}</span><span>${lvl.badge} ${lvl[state.lang]}</span>
     </div>
-    <div class="soon-card" style="text-align:center"><p style="color:var(--gold);font-weight:700">${i18n.tagline}</p></div>`;
+    ${nextM ? `<a class="home-card-row" href="#/challenges"><span class="hub-ico">🎯</span><div><b>${i18n.dailyMission}</b><small>${nextM[state.lang]} · +${nextM.pts}</small></div><span class="row-arrow">‹</span></a>` : ''}
+    <a class="home-card-row" href="#/challenges"><span class="hub-ico">🏆</span><div><b>${i18n.weeklyTitle}</b><small>${i18n.weeklyReward}</small></div><span class="row-arrow">‹</span></a>
+    <a class="home-card-row" href="#/travel" data-feat="${feat.id}"><span class="hub-ico">${feat.country.flag}</span><div><b>${i18n.featTitle}</b><small>${feat[state.lang] || feat.en} · ${feat.country[state.lang] || feat.country.en}</small></div><span class="row-arrow">‹</span></a>
+    <a class="home-card-row" href="#/events"><span class="hub-ico">🎉</span><div><b>${i18n.pulseTitle}</b><small>${i18n.eventsSub}</small></div><span class="row-arrow">‹</span></a>
+    <div class="hub-grid">
+      <a class="hub-card" href="#/explore"><span class="hub-ico">🧭</span><b>${i18n.exploreTitle}</b><small>${i18n.hubGlobeSub}</small></a>
+      <a class="hub-card" href="#/cards"><span class="hub-ico">📮</span><b>${i18n.hubCards}</b><small>${i18n.hubCardsSub}</small></a>
+      <a class="hub-card" href="#/travel"><span class="hub-ico">✈️</span><b>${i18n.hubTravel}</b><small>${i18n.hubTravelSub}</small></a>
+      <a class="hub-card" href="#/souk"><span class="hub-ico">🏺</span><b>${i18n.soukTitle2}</b><small>${i18n.soukSub2}</small></a>
+    </div>`;
 }
 
 function homeSearch(q) {
@@ -902,7 +955,7 @@ function renderCards() {
     </div>
     <h2 class="section-title">${i18n.cardYours}</h2>
     ${mine.length ? mine.map(cd => cardRow(cd, true)).join('') : `<p class="cards-empty">${i18n.cardEmpty}</p>`}
-    <h2 class="section-title">${i18n.cardFound}</h2>
+    <h2 class="section-title">${i18n.cardFound} <span class="badge-sample">${i18n.sampleBadge}</span></h2>
     ${found.map(cd => cardRow(cd, false)).join('')}`;
 }
 
@@ -918,6 +971,41 @@ function sendCard() {
   const city = ALL_CITIES.find(x => x.id === cityId);
   logMemory('card', (city ? (city[state.lang] || city.en) : cityId) + ': ' + text.slice(0, 40));
   render();
+}
+
+/* ---- challenges screen (missions, weekly, leaderboard, pulse) ---- */
+function renderChallenges() {
+  const i18n = t();
+  const lang = state.lang;
+  const n = earnedCount();
+  const pts = state.points;
+  const missions = dailyMissions();
+  const mState = missionState();
+  return `
+    <h2 class="section-title">${i18n.challengesTitle}</h2>
+    <div class="progress-strip"><span>⭐ ${i18n.points(pts)}</span><span>🔖 ${n}/${TOTAL_STAMPS}</span></div>
+    <h2 class="section-title">${i18n.missionsTitle}</h2>
+    <div class="missions">
+      ${missions.map(m => {
+        const done = mState.done.includes(m.id);
+        return `<div class="mission-row ${done ? 'done' : ''}">
+          <span class="mission-pts">+${m.pts}</span>
+          <span class="mission-text">${m[lang]}</span>
+          <span class="mission-state">${done ? i18n.done : ''}</span>
+        </div>`;
+      }).join('')}
+      <div class="mission-row rare ${pts >= 100 ? 'done' : ''}">
+        <span class="mission-pts">🪲</span>
+        <span class="mission-text"><b>${i18n.rareTitle}:</b> ${i18n.rareBody}</span>
+        <span class="mission-state">${pts >= 100 ? i18n.done : `${Math.min(pts,100)}/100`}</span>
+      </div>
+    </div>
+    <h2 class="section-title">${i18n.weeklyTitle}</h2>
+    ${weeklyChallengeHTML(n)}
+    <h2 class="section-title">${i18n.boardTitle} <span class="badge-sample">${i18n.demoBadge}</span></h2>
+    ${leaderboardHTML(pts)}
+    <h2 class="section-title">${i18n.eventsTitle}</h2>
+    <a class="home-card-row" href="#/events"><span class="hub-ico">🎉</span><div><b>${i18n.pulseTitle}</b><small>${i18n.eventsSub}</small></div><span class="row-arrow">‹</span></a>`;
 }
 
 /* ---- NILORA memory ---- */
@@ -938,6 +1026,12 @@ function renderMemory() {
     <div class="memory-row"><span class="memory-ico">☥</span><div><div class="memory-text">${i18n.memStart}</div></div></div>`;
 }
 
+
+/* ---- my journey (memory + saved + about) ---- */
+function renderJourney() {
+  const i18n = t();
+  return `<h2 class="section-title">${i18n.journeyTitle2}</h2>` + renderMemory() + renderSaved() + renderAbout();
+}
 
 /* ---- culture-swap souk ---- */
 function mySwaps() { return JSON.parse(localStorage.getItem('nilora.swaps') || '[]'); }
@@ -984,7 +1078,7 @@ function renderSouk() {
     </div>
     <h2 class="section-title">${i18n.swapYours}</h2>
     ${mine.length ? mine.map(s => swapRow(s, true)).join('') : `<p class="cards-empty">${i18n.swapEmpty}</p>`}
-    <h2 class="section-title">${i18n.swapOpen}</h2>
+    <h2 class="section-title">${i18n.swapOpen} <span class="badge-sample">${i18n.sampleBadge}</span></h2>
     ${feed.map(s => swapRow(s, false)).join('')}`;
 }
 
@@ -1002,8 +1096,13 @@ function sendSwap() {
   render();
 }
 
-/* ---- saved places ---- */
+/* ---- saved + visited places ---- */
 function savedPlaces() { return JSON.parse(localStorage.getItem('nilora.saved') || '[]'); }
+function visitedPlaces() { return JSON.parse(localStorage.getItem('nilora.visited') || '[]'); }
+function srcNote(name) {
+  const time = new Date().toLocaleTimeString(state.lang === 'ar' ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
+  return `<div class="src-note">${t().srcLabel(name, time)}</div>`;
+}
 
 function renderSaved() {
   const i18n = t();
@@ -1037,7 +1136,9 @@ async function loadEvents() {
       const cc = COUNTRIES.find(x => x.code === e.countryCode);
       const flag = cc ? cc.flag : '🌍';
       const cname = cc ? (cc[state.lang] || cc.en) : e.countryCode;
-      return `<div class="row"><span>${flag} <b>${e.localName || e.name}</b></span><small>${cname} · ${e.date}</small></div>`;
+      const local = e.localName || e.name;
+      const safe = /^[\u0000-\u04FF\u0600-\u06FF\u1E00-\u1EFF\s\u2010-\u2027]*$/.test(local) ? local : e.name;
+      return `<div class="row"><span>${flag} <b>${safe}</b></span><small>${cname} · ${e.date}</small></div>`;
     }).join('');
   } catch (e) { el.innerHTML = `<span class="live-loading">${t().noEvent}</span>`; }
 }
@@ -1101,28 +1202,37 @@ function render() {
   document.documentElement.dir = t().dir;
   document.getElementById('langToggle').textContent = t().langBtn;
   updateHud();
+  const TAB_OF = { home: 'home', explore: 'explore', map: 'explore', globe: 'explore', travel: 'explore', cards: 'explore',
+    passport: 'passport', challenges: 'challenges', events: 'challenges',
+    journey: 'journey', memory: 'journey', saved: 'journey', about: 'journey', souk: 'journey' };
+  const activeTab = TAB_OF[route] || 'home';
   document.querySelectorAll('.tab').forEach(tab =>
-    tab.classList.toggle('active', tab.dataset.route === route));
+    tab.classList.toggle('active', tab.dataset.route === activeTab));
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const k = el.dataset.i18n; if (t()[k]) el.textContent = t()[k];
   });
 
-  if (mapObj && route !== 'map') { mapObj.remove(); mapObj = null; }
-  if (globeState && route !== 'globe') { globeState.dispose(); globeState = null; }
+  const EXPLORE_ROUTES = ['explore', 'map', 'globe'];
+  if (mapObj) { mapObj.remove(); mapObj = null; }
+  if (globeState) { globeState.dispose(); globeState = null; }
   if (route === 'passport') app.innerHTML = renderPassport();
   else if (route === 'travel') app.innerHTML = renderTravel();
-  else if (route === 'globe') app.innerHTML = renderGlobe();
   else if (route === 'cards') app.innerHTML = renderCards();
-  else if (route === 'memory') app.innerHTML = renderMemory();
   else if (route === 'home') app.innerHTML = renderHome();
   else if (route === 'souk') app.innerHTML = renderSouk();
-  else if (route === 'saved') app.innerHTML = renderSaved();
   else if (route === 'events') app.innerHTML = renderEvents();
-  else if (route === 'about') app.innerHTML = renderAbout();
+  else if (route === 'challenges') app.innerHTML = renderChallenges();
+  else if (route === 'journey' || route === 'memory' || route === 'saved' || route === 'about') app.innerHTML = renderJourney();
+  else if (EXPLORE_ROUTES.includes(route)) {
+    const view = route === 'map' ? 'map' : route === 'globe' ? 'globe' : exploreView;
+    app.innerHTML = renderExplore(view);
+  }
   else app.innerHTML = renderSoon(route);
-  if (route === 'map') { initMap(); loadWorldEvent(); }
+  if (EXPLORE_ROUTES.includes(route)) {
+    initExplore(route === 'map' ? 'map' : route === 'globe' ? 'globe' : exploreView);
+    document.querySelectorAll('.seg-btn').forEach(b => b.addEventListener('click', () => initExplore(b.dataset.view)));
+  }
   if (route === 'events') loadEvents();
-  if (route === 'globe') initGlobe();
 
   const destSelect = document.getElementById('destSelect');
   if (destSelect) destSelect.addEventListener('change', () => loadDestination(destSelect.value));
@@ -1155,6 +1265,8 @@ function render() {
   document.querySelectorAll('[data-block]').forEach(b => b.addEventListener('click', () => { b.textContent = '✅'; b.disabled = true; }));
   const hs = document.getElementById('homeSearch');
   if (hs) hs.addEventListener('input', () => homeSearch(hs.value));
+  const featLink = document.querySelector('[data-feat]');
+  if (featLink) featLink.addEventListener('click', () => sessionStorage.setItem('nilora.dest', featLink.dataset.feat));
 
   const shareBtn = document.getElementById('shareBtn');
   if (shareBtn) shareBtn.addEventListener('click', sharePassport);
@@ -1208,6 +1320,7 @@ function showOnboarding() {
     el.remove();
     completeMission('languages');
     render();
+    showIntro();
   });
 }
 
@@ -1226,11 +1339,36 @@ document.getElementById('langToggle').addEventListener('click', () => {
   render();
 });
 
+function showIntro() {
+  if (sessionStorage.getItem('nilora.intro')) return;
+  const i18n = t();
+  const el = document.createElement('div');
+  el.className = 'intro';
+  el.id = 'intro';
+  el.innerHTML = `
+    <div class="intro-earth"><div class="intro-earth-img"></div></div>
+    <div class="intro-logo">NILORA</div>
+    <div class="intro-tag">${i18n.splashTag}</div>
+    <button class="intro-btn" id="introStart">${i18n.splashStart}</button>
+    <button class="intro-btn intro-btn-ghost" id="introContinue">${i18n.splashContinue}</button>
+    <button class="intro-skip" id="introSkip">${i18n.splashSkip}</button>`;
+  document.body.appendChild(el);
+  const done = (go) => {
+    sessionStorage.setItem('nilora.intro', '1');
+    el.remove();
+    if (go) location.hash = go;
+  };
+  el.querySelector('#introStart').addEventListener('click', () => done());
+  el.querySelector('#introContinue').addEventListener('click', () => done('#/journey'));
+  el.querySelector('#introSkip').addEventListener('click', () => done());
+}
+
 if (!localStorage.getItem('nilora.lang')) showOnboarding();
+else showIntro();
 
 window.addEventListener('hashchange', render);
 render();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
-}
+      }
