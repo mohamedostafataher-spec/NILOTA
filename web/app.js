@@ -19,7 +19,11 @@ const MISSION_POOL = [
 const I18N = {
   ar: {
     dir: 'rtl', langBtn: 'EN',
-    tabPassport: 'الجواز', tabMap: 'الخريطة', tabHara: 'الحارة', tabSouk: 'السوق',
+    tabPassport: 'الجواز', tabMap: 'الخريطة', tabTravel: 'سافر', tabHara: 'الحارة', tabSouk: 'السوق',
+    travelTitle: 'وضع المسافر', chooseDest: 'اختار وجهتك…', currencyLabel: 'العملة',
+    phrasesTitle: 'اتعلم ٥ كلمات من البلد', localTimeLabel: 'الساعة هناك',
+    eventTitle: 'احتفال النهاردة في العالم', eventClaim: 'احسبها +٢٠ نقطة', eventClaimed: 'اتحسبت ✅',
+    noEvent: 'مفيش احتفال رسمي النهاردة — بص بكرة', highLow: 'العظمى/الصغرى',
     heroSub: 'جواز سفرك للعالم — الأختام تتجمع من أماكن حقيقية، مش من الشاشة',
     stampsOf: (n, t) => `${n} من ${t} ختم`,
     nextLevel: (name, n) => n > 0 ? `باقي ${n} ${n === 1 ? 'ختم' : 'أختام'} لرتبة «${name}»` : 'وصلت لأعلى رتبة 🎉',
@@ -49,7 +53,11 @@ const I18N = {
   },
   en: {
     dir: 'ltr', langBtn: 'عربي',
-    tabPassport: 'Passport', tabMap: 'Map', tabHara: 'Hara', tabSouk: 'Souk',
+    tabPassport: 'Passport', tabMap: 'Map', tabTravel: 'Travel', tabHara: 'Hara', tabSouk: 'Souk',
+    travelTitle: 'Traveler mode', chooseDest: 'Choose your destination…', currencyLabel: 'Currency',
+    phrasesTitle: 'Learn 5 local words', localTimeLabel: 'Local time there',
+    eventTitle: "Today's world celebration", eventClaim: 'Claim +20 pts', eventClaimed: 'Claimed ✅',
+    noEvent: 'No official holiday today — check back tomorrow', highLow: 'High/Low',
     heroSub: 'Your world passport — stamps are earned in real places, not on a screen',
     stampsOf: (n, t) => `${n} of ${t} stamps`,
     nextLevel: (name, n) => n > 0 ? `${n} more ${n === 1 ? 'stamp' : 'stamps'} to «${name}»` : 'Top level reached 🎉',
@@ -470,6 +478,96 @@ function initMap() {
   completeMission('open_map');
 }
 
+/* ---- world event of the day (Nager.Date, keyless) ---- */
+
+function eventState() {
+  const raw = JSON.parse(localStorage.getItem('nilora.event') || '{}');
+  return raw.day === todayKey() ? raw : { day: todayKey(), claimed: false };
+}
+
+async function loadWorldEvent() {
+  const el = document.getElementById('eventRows');
+  if (!el) return;
+  try {
+    const r = await fetch('https://date.nager.at/api/v3/NextPublicHolidaysWorldwide');
+    const list = await r.json();
+    const today = todayKey();
+    const todays = list.filter(h => h.date === today);
+    const st = eventState();
+    if (!todays.length) { el.textContent = t().noEvent; return; }
+    const h = todays[0];
+    const country = COUNTRIES.find(cn => cn.code === h.countryCode);
+    const flag = country ? country.flag : '🌍';
+    const cname = country ? country[state.lang] : h.countryCode;
+    el.innerHTML = `<div><b>${flag} ${cname}</b> · ${h.name}</div>` +
+      (st.claimed
+        ? `<div>${t().eventClaimed}</div>`
+        : `<button id="eventClaimBtn" class="claim-btn" type="button">${t().eventClaim}</button>`);
+    const btn = document.getElementById('eventClaimBtn');
+    if (btn) btn.addEventListener('click', () => {
+      const s2 = eventState();
+      if (s2.claimed) return;
+      s2.claimed = true;
+      localStorage.setItem('nilora.event', JSON.stringify(s2));
+      state.points += 20;
+      localStorage.setItem('nilora.points', String(state.points));
+      btn.replaceWith(document.createTextNode(t().eventClaimed));
+    });
+  } catch (e) { el.textContent = '—'; }
+}
+
+/* ---- traveler mode ---- */
+
+function renderTravel() {
+  const i18n = t();
+  return `
+    <h2 class="section-title">${i18n.travelTitle}</h2>
+    <div class="live-panel">
+      <select id="destSelect" class="dest-select">
+        <option value="">${i18n.chooseDest}</option>
+        ${COUNTRIES.map(cn => `<optgroup label="${cn.flag} ${cn[state.lang]}">
+          ${cn.cities.map(c => `<option value="${c.id}">${c[state.lang]}</option>`).join('')}
+        </optgroup>`).join('')}
+      </select>
+      <div id="destInfo" class="rows" style="margin-top:10px"></div>
+    </div>`;
+}
+
+async function loadDestination(cityId) {
+  const el = document.getElementById('destInfo');
+  if (!el) return;
+  const city = ALL_CITIES.find(c => c.id === cityId);
+  if (!city) { el.innerHTML = ''; return; }
+  const cur = CURRENCY[city.country.code] || 'USD';
+  el.innerHTML = `<span class="live-loading">${t().loading}</span>`;
+  let weatherHtml = '', tz = '';
+  try {
+    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' + city.lat + '&longitude=' + city.lon +
+      '&current=temperature_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&forecast_days=1&timezone=auto');
+    const j = await r.json();
+    tz = j.timezone;
+    weatherHtml = `<div>🌡️ <b>${Math.round(j.current.temperature_2m)}°C</b> · ${weatherLabel(j.current.weather_code)} · ` +
+      `${t().highLow}: ${Math.round(j.daily.temperature_2m_max[0])}°/${Math.round(j.daily.temperature_2m_min[0])}° · 💨 ${Math.round(j.current.wind_speed_10m)} km/h</div>`;
+  } catch (e) { weatherHtml = ''; }
+  let currHtml = `<div>💱 <b>${t().currencyLabel}:</b> ${cur}</div>`;
+  try {
+    const r2 = await fetch('https://open.er-api.com/v6/latest/EGP');
+    const j2 = await r2.json();
+    const rate = j2.rates[cur];
+    if (rate) currHtml = `<div>💱 1 EGP = <b>${rate.toFixed(rate < 0.01 ? 4 : 2)}</b> ${cur} · 100 EGP ≈ <b>${(rate * 100).toFixed(2)}</b> ${cur}</div>`;
+  } catch (e) {}
+  let timeHtml = '';
+  try {
+    if (tz) timeHtml = `<div>🕐 ${t().localTimeLabel}: <b>${new Date().toLocaleTimeString(state.lang === 'ar' ? 'ar-EG' : 'en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit' })}</b></div>`;
+  } catch (e) {}
+  const words = PHRASES[city.country.code] || [];
+  const wordsHtml = words.length
+    ? `<div class="phrases-title">${t().phrasesTitle}</div>` + words.map(w =>
+        `<div class="phrase-row"><b>${w[0]}</b> <span class="phrase-tr">(${w[1]})</span> — ${w[2]}</div>`).join('')
+    : '';
+  el.innerHTML = weatherHtml + timeHtml + currHtml + wordsHtml;
+}
+
 /* ---- screens ---- */
 
 function renderMap() {
@@ -482,6 +580,7 @@ function renderMap() {
       <span><i class="dot dot-quake"></i>${i18n.legendQuakes}</span>
       <span><i class="dot dot-story"></i>${i18n.legendStories}</span>
     </div>
+    <div class="live-panel" id="eventPanel"><h3>🎉 ${i18n.eventTitle}</h3><div id="eventRows" class="rows"><span class="live-loading">${i18n.loading}</span></div></div>
     <div class="live-panel"><h3>🕌 ${i18n.prayerTitle}</h3><div id="prayerRows" class="rows"><span class="live-loading">${i18n.loading}</span></div></div>
     <div class="live-panel"><h3>🌋 ${i18n.quakeTitle}</h3><div id="quakeRows" class="rows"><span class="live-loading">${i18n.loading}</span></div></div>
     <div class="soon-card" style="text-align:center"><p style="color:var(--gold-dark);font-weight:700">${i18n.tagline}</p></div>`;
@@ -522,8 +621,12 @@ function render() {
 
   if (mapObj && route !== 'map') { mapObj.remove(); mapObj = null; }
   if (route === 'passport') app.innerHTML = renderPassport();
+  else if (route === 'travel') app.innerHTML = renderTravel();
   else app.innerHTML = renderSoon(route);
-  if (route === 'map') initMap();
+  if (route === 'map') { initMap(); loadWorldEvent(); }
+
+  const destSelect = document.getElementById('destSelect');
+  if (destSelect) destSelect.addEventListener('change', () => loadDestination(destSelect.value));
 
   const demoBtn = document.getElementById('demoToggle');
   if (demoBtn) demoBtn.addEventListener('click', () => {
