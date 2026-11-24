@@ -417,3 +417,13 @@ body {
 .board-rank { width: 26px; text-align: center; }
 .board-name { flex: 1; }
 .board-pts { font-weight: 800; color: var(--gold-dark); font-size: 12.5px; }
+
+/* 3D globe */
+.globe-wrap {
+  background: radial-gradient(ellipse at 50% 40%, #122540 0%, #081120 75%);
+  border-radius: 18px;
+  border: 1px solid var(--ivory-muted);
+  overflow: hidden;
+  direction: ltr;
+}
+.globe-wrap canvas { display: block; width: 100%; }
