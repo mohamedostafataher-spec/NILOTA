@@ -320,3 +320,76 @@ body {
 .papyrus-title { font-weight: 900; font-size: 14px; margin-bottom: 6px; }
 .papyrus-text { font-size: 12px; line-height: 1.8; margin-bottom: 8px; }
 .papyrus-popup a { color: #0D7D78; font-weight: 700; font-size: 12px; }
+
+/* hero actions */
+.hero-actions { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+.share-btn {
+  background: var(--gold);
+  color: var(--navy-dark);
+  border: none;
+  border-radius: 12px;
+  padding: 8px 16px;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+}
+.hero-actions .demo-toggle { margin-top: 0; }
+
+/* missions */
+.missions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+.mission-row {
+  display: flex; align-items: center; gap: 10px;
+  background: #fff; border: 1px solid var(--ivory-muted);
+  border-radius: 14px; padding: 10px 12px;
+}
+.mission-row.done { border-color: var(--turquoise); background: #D8F4F2; }
+.mission-row.rare { border-color: var(--gold); background: var(--gold-container); }
+.mission-pts { font-weight: 900; color: var(--gold-dark); font-size: 13px; min-width: 34px; }
+.mission-text { font-size: 13px; font-weight: 600; flex: 1; }
+.mission-state { font-size: 12px; color: var(--turquoise-dark); font-weight: 700; }
+
+/* country blocks */
+.country-block { margin-bottom: 18px; }
+.country-head {
+  font-weight: 800; font-size: 15px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.country-count { font-size: 11.5px; color: var(--ink-soft); background: var(--ivory-muted); border-radius: 999px; padding: 2px 9px; font-weight: 700; }
+
+/* guide text in map popups */
+.guide-text { margin-top: 6px; font-size: 12px; line-height: 1.7; color: #3A2908; max-width: 250px; }
+
+/* unlock animation */
+.unlock-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(8,17,32,0.88);
+  display: grid; place-items: center; place-content: center;
+  gap: 14px; text-align: center;
+  animation: unlockIn 0.35s ease-out;
+}
+.unlock-overlay.out { animation: unlockOut 0.5s ease-in forwards; }
+.unlock-rings { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.unlock-rings span {
+  position: absolute; width: 120px; height: 120px; border-radius: 50%;
+  border: 3px solid var(--gold);
+  animation: ringExpand 1.6s ease-out infinite;
+}
+.unlock-rings span:nth-child(2) { animation-delay: 0.4s; }
+.unlock-rings span:nth-child(3) { animation-delay: 0.8s; }
+.unlock-stamp {
+  font-size: 84px; z-index: 1;
+  animation: stampPop 0.6s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+.unlock-title { color: var(--gold); font-size: 26px; font-weight: 900; z-index: 1; }
+.unlock-city { color: var(--ivory); font-size: 18px; font-weight: 700; z-index: 1; }
+@keyframes ringExpand {
+  from { transform: scale(0.4); opacity: 1; }
+  to { transform: scale(2.6); opacity: 0; }
+}
+@keyframes stampPop {
+  from { transform: scale(0) rotate(-30deg); }
+  to { transform: scale(1) rotate(-6deg); }
+}
+@keyframes unlockIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes unlockOut { to { opacity: 0; } }
