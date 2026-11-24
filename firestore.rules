@@ -1,0 +1,1807 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL PRIMITIVE HELPERS ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admin_users/$(request.auth.uid)) ||
+        ('email_verified' in request.auth.token &&
+         request.auth.token.email_verified == true &&
+         'email' in request.auth.token &&
+         request.auth.token.email == 'mohamedostafataher@gmail.com')
+      );
+    }
+
+    function isApprovedProvider(uid) {
+      return exists(/databases/$(database)/documents/providers/$(uid)) &&
+             get(/databases/$(database)/documents/providers/$(uid)).data.verificationStatus == 'APPROVED';
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isBoundedString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isBoundedStringList(val, maxItems, maxItemLen) {
+      return val is list && val.size() <= maxItems &&
+             (val.size() == 0 || (val[0] is string && val[0].size() <= maxItemLen));
+    }
+
+    function pairDocId(uidA, uidB) {
+      return uidA < uidB ? (uidA + '__' + uidB) : (uidB + '__' + uidA);
+    }
+
+    function isBlockedBetween(uidA, uidB) {
+      return exists(/databases/$(database)/documents/users/$(uidA)/blocked/$(uidB)) ||
+             exists(/databases/$(database)/documents/users/$(uidB)/blocked/$(uidA));
+    }
+
+    function isConnected(uidA, uidB) {
+      return exists(/databases/$(database)/documents/direct_conversations/$(pairDocId(uidA, uidB)));
+    }
+
+    function isGroupMember(groupId) {
+      return exists(/databases/$(database)/documents/groups/$(groupId)) &&
+             request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds;
+    }
+
+    function isGroupModeratorOrOwner(groupId) {
+      return exists(/databases/$(database)/documents/groups/$(groupId)) && (
+        get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId == request.auth.uid ||
+        request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.moderatorIds
+      );
+    }
+
+    // --- VALIDATION HELPERS ---
+    function isValidAdminUser(data) {
+      return isBoundedString(data.userId, 1, 128) &&
+             isBoundedString(data.email, 3, 200) &&
+             data.roleLevel in ['SUPER_ADMIN', 'MODERATOR', 'VERIFIER'] &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidUserProfile(data) {
+      return isBoundedString(data.userId, 1, 128) &&
+             isBoundedString(data.displayName, 1, 80) &&
+             data.accountMode in ['TRAVELER', 'LOCAL_PROVIDER', 'GLOBAL_MEMBER'] &&
+             data.preferredLanguage in ['en', 'ar', 'fr', 'ru'] &&
+             isBoundedString(data.country, 1, 80) &&
+             (!('city' in data) || isBoundedString(data.city, 0, 80)) &&
+             (!('nativeLanguage' in data) || isBoundedString(data.nativeLanguage, 1, 16)) &&
+             (!('spokenLanguages' in data) || isBoundedStringList(data.spokenLanguages, 15, 20)) &&
+             (!('learningLanguages' in data) || isBoundedStringList(data.learningLanguages, 15, 20)) &&
+             (!('interests' in data) || isBoundedStringList(data.interests, 15, 40)) &&
+             (!('profileVisibility' in data) || data.profileVisibility in ['PUBLIC', 'CONNECTIONS_ONLY', 'PRIVATE']) &&
+             (!('openToLanguageExchange' in data) || data.openToLanguageExchange is bool) &&
+             data.privacyConsent is bool &&
+             (!('retainTranslationHistory' in data) || data.retainTranslationHistory is bool) &&
+             (!('photoUri' in data) || isBoundedString(data.photoUri, 0, 1000)) &&
+             (!('bio' in data) || isBoundedString(data.bio, 0, 500)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPublicProfile(data) {
+      return isBoundedString(data.userId, 1, 128) &&
+             isBoundedString(data.displayName, 1, 80) &&
+             isBoundedString(data.country, 1, 80) &&
+             (!('city' in data) || isBoundedString(data.city, 0, 80)) &&
+             isBoundedString(data.nativeLanguage, 1, 16) &&
+             (!('spokenLanguages' in data) || isBoundedStringList(data.spokenLanguages, 15, 20)) &&
+             (!('learningLanguages' in data) || isBoundedStringList(data.learningLanguages, 15, 20)) &&
+             (!('interests' in data) || isBoundedStringList(data.interests, 15, 40)) &&
+             (!('photoUri' in data) || isBoundedString(data.photoUri, 0, 1000)) &&
+             (!('bio' in data) || isBoundedString(data.bio, 0, 500)) &&
+             data.profileVisibility in ['PUBLIC', 'CONNECTIONS_ONLY', 'PRIVATE'] &&
+             data.openToLanguageExchange is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidUserPrivateInfo(data) {
+      return isBoundedString(data.userId, 1, 128) &&
+             (!('email' in data) || isBoundedString(data.email, 0, 200)) &&
+             (!('phoneCountryCode' in data) || isBoundedString(data.phoneCountryCode, 0, 10)) &&
+             (!('phone' in data) || isBoundedString(data.phone, 0, 40)) &&
+             (!('emergencyContact' in data) || isBoundedString(data.emergencyContact, 0, 160)) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidBlockedUser(data) {
+      return isBoundedString(data.blockerId, 1, 128) &&
+             isBoundedString(data.blockedUserId, 1, 128) &&
+             data.blockerId != data.blockedUserId &&
+             (!('blockedUserName' in data) || isBoundedString(data.blockedUserName, 0, 80)) &&
+             (!('reason' in data) || isBoundedString(data.reason, 0, 200)) &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidConnectionRequest(data) {
+      return isBoundedString(data.senderId, 1, 128) &&
+             isBoundedString(data.senderName, 1, 80) &&
+             (!('senderCountry' in data) || isBoundedString(data.senderCountry, 0, 80)) &&
+             (!('senderNativeLanguage' in data) || isBoundedString(data.senderNativeLanguage, 0, 16)) &&
+             isBoundedString(data.receiverId, 1, 128) &&
+             isBoundedString(data.receiverName, 1, 80) &&
+             (!('receiverCountry' in data) || isBoundedString(data.receiverCountry, 0, 80)) &&
+             (!('receiverNativeLanguage' in data) || isBoundedString(data.receiverNativeLanguage, 0, 16)) &&
+             data.senderId != data.receiverId &&
+             data.memberUids is list && data.memberUids.size() == 2 &&
+             data.senderId in data.memberUids && data.receiverId in data.memberUids &&
+             (!('introMessage' in data) || isBoundedString(data.introMessage, 0, 300)) &&
+             data.status in ['PENDING', 'ACCEPTED', 'DECLINED', 'CANCELLED'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidDirectConversation(data) {
+      return data.participantIds is list && data.participantIds.size() == 2 &&
+             data.participantIds[0] is string && data.participantIds[1] is string &&
+             data.participantIds[0] != data.participantIds[1] &&
+             data.participantNames is map &&
+             (!('participantLanguages' in data) || data.participantLanguages is map) &&
+             (!('lastMessagePreview' in data) || isBoundedString(data.lastMessagePreview, 0, 300)) &&
+             (!('lastMessageSenderId' in data) || isBoundedString(data.lastMessageSenderId, 0, 128)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidDirectMessage(data) {
+      return isBoundedString(data.conversationId, 1, 260) &&
+             data.participantIds is list && data.participantIds.size() == 2 &&
+             isBoundedString(data.senderId, 1, 128) &&
+             isBoundedString(data.senderName, 1, 80) &&
+             data.messageType in ['TEXT', 'VOICE_NOTE'] &&
+             isBoundedString(data.originalText, 1, 2000) &&
+             isBoundedString(data.sourceLanguage, 1, 16) &&
+             (!('translations' in data) || (data.translations is map && data.translations.size() <= 20)) &&
+             (!('translationConfidence' in data) || isBoundedString(data.translationConfidence, 0, 16)) &&
+             (!('translationNote' in data) || isBoundedString(data.translationNote, 0, 240)) &&
+             (!('audioBase64' in data) || isBoundedString(data.audioBase64, 0, 95000)) &&
+             (!('audioDurationMs' in data) || (data.audioDurationMs is int && data.audioDurationMs >= 0 && data.audioDurationMs <= 30000)) &&
+             (!('audioMimeType' in data) || isBoundedString(data.audioMimeType, 0, 40)) &&
+             data.deliveryStatus in ['SENT', 'DELIVERED', 'READ'] &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidGroupRoom(data) {
+      return isBoundedString(data.name, 2, 80) &&
+             (!('description' in data) || isBoundedString(data.description, 0, 400)) &&
+             isBoundedString(data.ownerId, 1, 128) &&
+             isBoundedStringList(data.moderatorIds, 20, 128) &&
+             isBoundedStringList(data.memberIds, 100, 128) &&
+             isBoundedStringList(data.bannedIds, 100, 128) &&
+             data.ownerId in data.memberIds &&
+             (!('primaryLanguages' in data) || isBoundedStringList(data.primaryLanguages, 10, 16)) &&
+             data.joinPolicy in ['OPEN', 'REQUEST_APPROVAL', 'INVITE_ONLY'] &&
+             data.autoTranslateDefault is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidGroupJoinRequest(data) {
+      return isBoundedString(data.groupId, 1, 128) &&
+             isBoundedString(data.userId, 1, 128) &&
+             isBoundedString(data.userName, 1, 80) &&
+             (!('userCountry' in data) || isBoundedString(data.userCountry, 0, 80)) &&
+             (!('nativeLanguage' in data) || isBoundedString(data.nativeLanguage, 0, 16)) &&
+             (!('message' in data) || isBoundedString(data.message, 0, 300)) &&
+             data.requestType in ['JOIN_REQUEST', 'INVITE'] &&
+             data.status in ['PENDING', 'APPROVED', 'DECLINED'] &&
+             (!('invitedBy' in data) || isBoundedString(data.invitedBy, 0, 128)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidGroupMessage(data) {
+      return isBoundedString(data.groupId, 1, 128) &&
+             isBoundedString(data.senderId, 1, 128) &&
+             isBoundedString(data.senderName, 1, 80) &&
+             isBoundedString(data.originalText, 1, 2000) &&
+             isBoundedString(data.sourceLanguage, 1, 16) &&
+             (!('translations' in data) || (data.translations is map && data.translations.size() <= 20)) &&
+             (!('translationNote' in data) || isBoundedString(data.translationNote, 0, 240)) &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidFavoriteItem(data) {
+      return isBoundedString(data.userId, 1, 128) &&
+             isBoundedString(data.targetId, 1, 128) &&
+             data.targetType in ['DESTINATION', 'ACTIVITY', 'PROVIDER'] &&
+             isBoundedString(data.title, 1, 140) &&
+             (!('cityName' in data) || isBoundedString(data.cityName, 0, 80)) &&
+             (!('category' in data) || isBoundedString(data.category, 0, 80)) &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidTravelNote(data) {
+      return isBoundedString(data.userId, 1, 128) &&
+             isBoundedString(data.title, 1, 120) &&
+             isBoundedString(data.content, 1, 2000) &&
+             (!('cityName' in data) || isBoundedString(data.cityName, 0, 80)) &&
+             (!('tripDate' in data) || isBoundedString(data.tripDate, 0, 40)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidNotification(data) {
+      return isBoundedString(data.userId, 1, 128) &&
+             isBoundedString(data.title, 1, 120) &&
+             isBoundedString(data.message, 1, 500) &&
+             data.category in ['BOOKING', 'VERIFICATION', 'SYSTEM', 'TRANSLATION', 'COMMUNITY', 'GROUP', 'EXPERIENCE', 'ADVENTURE', 'REALITY'] &&
+             data.readStatus is bool &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidCountry(data) {
+      return isBoundedString(data.code, 2, 10) &&
+             isBoundedString(data.name, 1, 80) &&
+             (!('nativeName' in data) || isBoundedString(data.nativeName, 0, 80)) &&
+             isBoundedString(data.defaultCurrency, 1, 10) &&
+             (!('supportedLanguages' in data) || isBoundedStringList(data.supportedLanguages, 20, 16)) &&
+             data.active is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidCity(data) {
+      return isBoundedString(data.countryCode, 2, 10) &&
+             isBoundedString(data.name, 1, 80) &&
+             (!('arabicName' in data) || isBoundedString(data.arabicName, 0, 80)) &&
+             (!('region' in data) || isBoundedString(data.region, 0, 80)) &&
+             data.active is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidDestination(data) {
+      return isBoundedString(data.title, 2, 140) &&
+             isBoundedString(data.countryCode, 2, 10) &&
+             isBoundedString(data.cityName, 1, 80) &&
+             isBoundedString(data.category, 1, 60) &&
+             isBoundedString(data.description, 1, 2000) &&
+             data.verifiedCoordinates is bool &&
+             (!('latitude' in data) || (data.latitude is number && data.latitude >= -90 && data.latitude <= 90)) &&
+             (!('longitude' in data) || (data.longitude is number && data.longitude >= -180 && data.longitude <= 180)) &&
+             (!('facilities' in data) || isBoundedStringList(data.facilities, 30, 80)) &&
+             (!('operatingHours' in data) || isBoundedString(data.operatingHours, 0, 200)) &&
+             (!('priceInfo' in data) || isBoundedString(data.priceInfo, 0, 200)) &&
+             (!('safetyWarnings' in data) || isBoundedString(data.safetyWarnings, 0, 500)) &&
+             (!('accessibilityInfo' in data) || isBoundedString(data.accessibilityInfo, 0, 300)) &&
+             (!('officialWebsite' in data) || isBoundedString(data.officialWebsite, 0, 300)) &&
+             (!('contactInfo' in data) || isBoundedString(data.contactInfo, 0, 200)) &&
+             (!('photoUrl' in data) || isBoundedString(data.photoUrl, 0, 500)) &&
+             isBoundedString(data.sourceName, 1, 200) &&
+             (!('sourceUrl' in data) || isBoundedString(data.sourceUrl, 0, 500)) &&
+             (!('lastVerifiedAt' in data) || isBoundedString(data.lastVerifiedAt, 0, 60)) &&
+             data.verificationStatus in ['PENDING', 'APPROVED', 'REJECTED'] &&
+             isBoundedString(data.submittedBy, 1, 128) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidActivity(data) {
+      return isBoundedString(data.title, 2, 140) &&
+             isBoundedString(data.providerId, 1, 128) &&
+             isBoundedString(data.providerName, 1, 100) &&
+             isBoundedString(data.countryCode, 2, 10) &&
+             isBoundedString(data.cityName, 1, 80) &&
+             isBoundedString(data.category, 1, 60) &&
+             isBoundedString(data.description, 1, 2000) &&
+             isBoundedString(data.durationLabel, 1, 80) &&
+             (!('priceAmount' in data) || (data.priceAmount is number && data.priceAmount >= 0)) &&
+             (!('currency' in data) || isBoundedString(data.currency, 0, 10)) &&
+             data.priceOnRequest is bool &&
+             data.availabilityStatus in ['AVAILABLE', 'ON_REQUEST', 'UNAVAILABLE'] &&
+             (!('includedServices' in data) || isBoundedStringList(data.includedServices, 25, 100)) &&
+             (!('exclusions' in data) || isBoundedStringList(data.exclusions, 25, 100)) &&
+             isBoundedString(data.cancellationPolicy, 1, 500) &&
+             (!('safetyRequirements' in data) || isBoundedString(data.safetyRequirements, 0, 500)) &&
+             (!('latitude' in data) || (data.latitude is number && data.latitude >= -90 && data.latitude <= 90)) &&
+             (!('longitude' in data) || (data.longitude is number && data.longitude <= 180 && data.longitude >= -180)) &&
+             data.verifiedCoordinates is bool &&
+             isBoundedString(data.sourceName, 1, 200) &&
+             data.verificationStatus in ['PENDING', 'APPROVED', 'REJECTED'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidProvider(data) {
+      return isBoundedString(data.userId, 1, 128) &&
+             isBoundedString(data.fullName, 2, 100) &&
+             data.serviceType in ['TOUR_GUIDE', 'TRANSLATOR', 'TRAVEL_ASSISTANT', 'TOUR_OPERATOR', 'HOSPITALITY'] &&
+             isBoundedStringList(data.languages, 15, 24) &&
+             isBoundedStringList(data.citiesCovered, 20, 80) &&
+             isBoundedString(data.bio, 5, 1000) &&
+             (!('licenseNumber' in data) || isBoundedString(data.licenseNumber, 0, 100)) &&
+             isBoundedString(data.documentSummary, 3, 400) &&
+             (!('documentRefUri' in data) || isBoundedString(data.documentRefUri, 0, 1000)) &&
+             data.verificationStatus in ['PENDING', 'APPROVED', 'REJECTED'] &&
+             (!('reviewedBy' in data) || isBoundedString(data.reviewedBy, 0, 128)) &&
+             (!('rejectionReason' in data) || isBoundedString(data.rejectionReason, 0, 300)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidBooking(data) {
+      return isBoundedString(data.bookingReference, 4, 40) &&
+             isBoundedString(data.travelerId, 1, 128) &&
+             isBoundedString(data.travelerName, 1, 100) &&
+             isBoundedString(data.providerId, 1, 128) &&
+             isBoundedString(data.providerName, 1, 100) &&
+             isBoundedString(data.activityId, 1, 128) &&
+             isBoundedString(data.activityTitle, 1, 140) &&
+             isBoundedString(data.requestedDate, 4, 40) &&
+             data.participantsCount is int && data.participantsCount >= 1 && data.participantsCount <= 50 &&
+             (!('notes' in data) || isBoundedString(data.notes, 0, 500)) &&
+             data.status in ['REQUEST_SUBMITTED', 'AWAITING_PROVIDER_CONFIRMATION', 'CONFIRMED', 'REJECTED', 'CANCELLED'] &&
+             (!('cancellationReason' in data) || isBoundedString(data.cancellationReason, 0, 300)) &&
+             data.paymentStatus in ['NOT_CONFIGURED', 'PENDING', 'PAID', 'REFUNDED'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidConversationRoom(data) {
+      return isBoundedString(data.roomCode, 4, 24) &&
+             isBoundedString(data.hostId, 1, 128) &&
+             isBoundedString(data.hostName, 1, 80) &&
+             data.hostLanguage in ['en', 'ar', 'fr', 'ru'] &&
+             (!('guestId' in data) || isBoundedString(data.guestId, 0, 128)) &&
+             (!('guestName' in data) || isBoundedString(data.guestName, 0, 80)) &&
+             (!('guestLanguage' in data) || data.guestLanguage in ['en', 'ar', 'fr', 'ru']) &&
+             data.memberUids is list && data.memberUids.size() >= 1 && data.memberUids.size() <= 2 &&
+             (data.memberUids[0] is string) &&
+             data.status in ['WAITING', 'ACTIVE', 'ENDED'] &&
+             data.retainTranscript is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidConversationMessage(data) {
+      return isBoundedString(data.roomCode, 4, 24) &&
+             data.memberUids is list && data.memberUids.size() >= 1 && data.memberUids.size() <= 2 &&
+             isBoundedString(data.senderId, 1, 128) &&
+             isBoundedString(data.senderName, 1, 80) &&
+             data.sourceLanguage in ['en', 'ar', 'fr', 'ru'] &&
+             data.targetLanguage in ['en', 'ar', 'fr', 'ru'] &&
+             isBoundedString(data.originalText, 1, 1500) &&
+             isBoundedString(data.translatedText, 1, 1500) &&
+             (!('confidenceNote' in data) || isBoundedString(data.confidenceNote, 0, 200)) &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidReport(data) {
+      return isBoundedString(data.reporterId, 1, 128) &&
+             data.targetType in ['PROVIDER', 'DESTINATION', 'ACTIVITY', 'ROOM', 'USER', 'MESSAGE', 'GROUP', 'GROUP_MESSAGE', 'POSTCARD', 'POSTCARD_CONTRIBUTION', 'CULTURE_SWAP', 'WORLD_QUEST', 'MEMORY', 'ADVENTURE_SESSION', 'CREW', 'REALITY_EVENT', 'REALITY_ACTIVITY', 'REALITY_MISSION', 'GLOBAL_CHALLENGE'] &&
+             isBoundedString(data.targetId, 1, 200) &&
+             isBoundedString(data.reason, 2, 160) &&
+             (!('details' in data) || isBoundedString(data.details, 0, 1000)) &&
+             data.status in ['OPEN', 'REVIEWED', 'RESOLVED'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidDataSource(data) {
+      return isBoundedString(data.name, 2, 120) &&
+             isBoundedString(data.providerType, 2, 60) &&
+             data.status in ['ACTIVE', 'AWAITING_CREDENTIALS', 'UNAVAILABLE'] &&
+             (!('notes' in data) || isBoundedString(data.notes, 0, 500)) &&
+             isBoundedString(data.updatedBy, 1, 128) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidAuditLog(data) {
+      return isBoundedString(data.actorId, 1, 128) &&
+             (!('actorEmail' in data) || isBoundedString(data.actorEmail, 0, 200)) &&
+             isBoundedString(data.action, 2, 100) &&
+             isBoundedString(data.targetCollection, 1, 80) &&
+             (!('targetId' in data) || isBoundedString(data.targetId, 0, 128)) &&
+             isBoundedString(data.summary, 2, 500) &&
+             data.severity in ['INFO', 'WARNING', 'SECURITY'] &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidWorldPostcard(data) {
+      return isBoundedString(data.authorId, 1, 128) &&
+             isBoundedString(data.authorName, 1, 80) &&
+             isBoundedString(data.country, 1, 80) &&
+             (!('city' in data) || isBoundedString(data.city, 0, 80)) &&
+             isBoundedString(data.languageCode, 1, 16) &&
+             data.category in ['STORY', 'QUESTION', 'EXPRESSION', 'FOOD', 'DAILY_LIFE', 'TRADITION'] &&
+             isBoundedString(data.title, 1, 120) &&
+             isBoundedString(data.storyText, 1, 1500) &&
+             (!('localExpression' in data) || isBoundedString(data.localExpression, 0, 300)) &&
+             (!('questionPrompt' in data) || isBoundedString(data.questionPrompt, 0, 300)) &&
+             (!('photoBase64' in data) || isBoundedString(data.photoBase64, 0, 220000)) &&
+             (!('audioBase64' in data) || isBoundedString(data.audioBase64, 0, 100000)) &&
+             (!('audioDurationMs' in data) || (data.audioDurationMs is int && data.audioDurationMs >= 0 && data.audioDurationMs <= 30000)) &&
+             (!('translations' in data) || (data.translations is map && data.translations.size() <= 20)) &&
+             (!('translationNote' in data) || isBoundedString(data.translationNote, 0, 240)) &&
+             isBoundedStringList(data.participantIds, 50, 128) &&
+             isBoundedStringList(data.countriesChain, 50, 80) &&
+             data.contributionsCount is int && data.contributionsCount >= 0 && data.contributionsCount <= 500 &&
+             data.allowReplies is bool &&
+             data.allowPrivateConnect is bool &&
+             data.visibility in ['PUBLIC', 'CONNECTIONS_ONLY', 'PRIVATE'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPostcardContribution(data) {
+      return isBoundedString(data.postcardId, 1, 128) &&
+             isBoundedString(data.authorId, 1, 128) &&
+             isBoundedString(data.authorName, 1, 80) &&
+             isBoundedString(data.country, 1, 80) &&
+             (!('city' in data) || isBoundedString(data.city, 0, 80)) &&
+             isBoundedString(data.languageCode, 1, 16) &&
+             isBoundedString(data.responseText, 1, 1500) &&
+             (!('localExpression' in data) || isBoundedString(data.localExpression, 0, 300)) &&
+             (!('photoBase64' in data) || isBoundedString(data.photoBase64, 0, 220000)) &&
+             (!('audioBase64' in data) || isBoundedString(data.audioBase64, 0, 100000)) &&
+             (!('audioDurationMs' in data) || (data.audioDurationMs is int && data.audioDurationMs >= 0 && data.audioDurationMs <= 30000)) &&
+             (!('translations' in data) || (data.translations is map && data.translations.size() <= 20)) &&
+             (!('translationNote' in data) || isBoundedString(data.translationNote, 0, 240)) &&
+             data.allowPrivateConnect is bool &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidCultureSwap(data) {
+      return isBoundedString(data.creatorId, 1, 128) &&
+             isBoundedString(data.creatorName, 1, 80) &&
+             isBoundedString(data.creatorCountry, 1, 80) &&
+             isBoundedString(data.creatorLanguage, 1, 16) &&
+             data.promptCategory in ['TEACH_PHRASE', 'MORNING_ROUTINE', 'FOOD_TRADITION', 'LOCAL_SECRET', 'MUSIC_SONG', 'EVERYDAY_TRADITION'] &&
+             isBoundedString(data.promptText, 2, 400) &&
+             data.participationMode in ['TWO_PERSON', 'GROUP'] &&
+             data.maxParticipants is int && data.maxParticipants >= 2 && data.maxParticipants <= 20 &&
+             isBoundedStringList(data.participantIds, 20, 128) &&
+             data.participantNames is map && data.participantNames.size() <= 20 &&
+             data.participantCountries is map && data.participantCountries.size() <= 20 &&
+             data.entriesCount is int && data.entriesCount >= 0 && data.entriesCount <= 200 &&
+             data.status in ['OPEN', 'EXCHANGED', 'COMPLETED'] &&
+             data.allowPrivateConnect is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidCultureSwapEntry(data) {
+      return isBoundedString(data.swapId, 1, 128) &&
+             isBoundedString(data.authorId, 1, 128) &&
+             isBoundedString(data.authorName, 1, 80) &&
+             isBoundedString(data.country, 1, 80) &&
+             isBoundedString(data.languageCode, 1, 16) &&
+             isBoundedString(data.contentText, 1, 1500) &&
+             (!('expressionSample' in data) || isBoundedString(data.expressionSample, 0, 300)) &&
+             (!('photoBase64' in data) || isBoundedString(data.photoBase64, 0, 220000)) &&
+             (!('audioBase64' in data) || isBoundedString(data.audioBase64, 0, 100000)) &&
+             (!('audioDurationMs' in data) || (data.audioDurationMs is int && data.audioDurationMs >= 0 && data.audioDurationMs <= 30000)) &&
+             (!('translations' in data) || (data.translations is map && data.translations.size() <= 20)) &&
+             (!('translationNote' in data) || isBoundedString(data.translationNote, 0, 240)) &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidWorldQuest(data) {
+      return isBoundedString(data.creatorId, 1, 128) &&
+             isBoundedString(data.creatorName, 1, 80) &&
+             data.missionType in ['FIVE_SIMILARITIES', 'THREE_EXPRESSIONS', 'LOCAL_TRADITION', 'FOOD_STORY', 'EVERYDAY_COMPARE', 'CUSTOM'] &&
+             isBoundedString(data.title, 2, 120) &&
+             isBoundedString(data.objective, 4, 500) &&
+             data.targetGoal is int && data.targetGoal >= 2 && data.targetGoal <= 50 &&
+             isBoundedStringList(data.participantIds, 50, 128) &&
+             isBoundedStringList(data.participantCountries, 50, 80) &&
+             data.contributionsCount is int && data.contributionsCount >= 0 && data.contributionsCount <= 500 &&
+             data.status in ['ACTIVE', 'COMPLETED'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidWorldQuestContribution(data) {
+      return isBoundedString(data.questId, 1, 128) &&
+             isBoundedString(data.authorId, 1, 128) &&
+             isBoundedString(data.authorName, 1, 80) &&
+             isBoundedString(data.country, 1, 80) &&
+             isBoundedString(data.languageCode, 1, 16) &&
+             isBoundedString(data.contentText, 1, 1500) &&
+             (!('photoBase64' in data) || isBoundedString(data.photoBase64, 0, 220000)) &&
+             (!('audioBase64' in data) || isBoundedString(data.audioBase64, 0, 100000)) &&
+             (!('audioDurationMs' in data) || (data.audioDurationMs is int && data.audioDurationMs >= 0 && data.audioDurationMs <= 30000)) &&
+             (!('translations' in data) || (data.translations is map && data.translations.size() <= 20)) &&
+             (!('translationNote' in data) || isBoundedString(data.translationNote, 0, 240)) &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidNiloraMemory(data) {
+      return isBoundedString(data.ownerId, 1, 128) &&
+             isBoundedString(data.ownerName, 1, 80) &&
+             data.memoryType in ['WORLD_POSTCARD', 'CULTURE_SWAP', 'WORLD_QUEST', 'CONVERSATION', 'VOICE_MEMORY'] &&
+             (!('sourceId' in data) || isBoundedString(data.sourceId, 0, 128)) &&
+             isBoundedString(data.title, 1, 120) &&
+             isBoundedString(data.summaryText, 1, 2000) &&
+             isBoundedString(data.originalLanguage, 1, 16) &&
+             (!('translations' in data) || (data.translations is map && data.translations.size() <= 20)) &&
+             isBoundedStringList(data.countries, 50, 80) &&
+             isBoundedStringList(data.partnerIds, 50, 128) &&
+             isBoundedStringList(data.partnerNames, 50, 80) &&
+             (!('placeLabel' in data) || isBoundedString(data.placeLabel, 0, 120)) &&
+             (!('photoBase64' in data) || isBoundedString(data.photoBase64, 0, 220000)) &&
+             (!('audioBase64' in data) || isBoundedString(data.audioBase64, 0, 100000)) &&
+             (!('audioDurationMs' in data) || (data.audioDurationMs is int && data.audioDurationMs >= 0 && data.audioDurationMs <= 30000)) &&
+             data.retainAudioConsent is bool &&
+             (data.retainAudioConsent == true || (!('audioBase64' in data) || data.audioBase64 == '')) &&
+             data.visibility in ['PRIVATE', 'SHARED_WITH_PARTICIPANTS', 'PUBLIC'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidLiveAdventureSession(data) {
+      return isBoundedString(data.hostId, 1, 128) &&
+             isBoundedString(data.hostName, 1, 80) &&
+             isBoundedString(data.adventureId, 1, 80) &&
+             isBoundedString(data.adventureTitle, 2, 120) &&
+             isBoundedString(data.destinationName, 2, 100) &&
+             data.mode in ['SOLO', 'JOIN_OTHERS', 'CREW_SESSION'] &&
+             data.status in ['ACTIVE', 'ENDED'] &&
+             data.maxParticipants is int && data.maxParticipants >= 1 && data.maxParticipants <= 12 &&
+             isBoundedStringList(data.participantIds, 12, 128) &&
+             data.participantNames is map && data.participantNames.size() <= 12 &&
+             data.participantCountries is map && data.participantCountries.size() <= 12 &&
+             data.participantLanguages is map && data.participantLanguages.size() <= 12 &&
+             data.voicePreferred is bool &&
+             data.experienceLevel in ['BEGINNER', 'INTERMEDIATE', 'EXPLORER'] &&
+             data.durationMinutes is int && data.durationMinutes >= 5 && data.durationMinutes <= 180 &&
+             (!('availabilitySlot' in data) || isBoundedString(data.availabilitySlot, 0, 80)) &&
+             (!('crewId' in data) || isBoundedString(data.crewId, 0, 128)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidSessionParticipantPresence(data) {
+      return isBoundedString(data.sessionId, 1, 128) &&
+             isBoundedString(data.userId, 1, 128) &&
+             isBoundedString(data.displayName, 1, 80) &&
+             isBoundedString(data.country, 1, 80) &&
+             isBoundedString(data.languageCode, 1, 16) &&
+             data.posX is number && data.posX >= -200 && data.posX <= 200 &&
+             data.posY is number && data.posY >= -80 && data.posY <= 80 &&
+             data.posZ is number && data.posZ >= -200 && data.posZ <= 200 &&
+             data.yawDeg is number && data.yawDeg >= -720 && data.yawDeg <= 720 &&
+             (!('pointedPoiId' in data) || isBoundedString(data.pointedPoiId, 0, 80)) &&
+             (!('pointedX' in data) || data.pointedX is number) &&
+             (!('pointedY' in data) || data.pointedY is number) &&
+             (!('pointedZ' in data) || data.pointedZ is number) &&
+             data.voiceMuted is bool &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidSessionChatMessage(data) {
+      return isBoundedString(data.sessionId, 1, 128) &&
+             isBoundedString(data.senderId, 1, 128) &&
+             isBoundedString(data.senderName, 1, 80) &&
+             isBoundedString(data.originalText, 1, 1500) &&
+             isBoundedString(data.sourceLanguage, 1, 16) &&
+             (!('translations' in data) || (data.translations is map && data.translations.size() <= 20)) &&
+             (!('translationNote' in data) || isBoundedString(data.translationNote, 0, 240)) &&
+             (!('discoveryPoiId' in data) || isBoundedString(data.discoveryPoiId, 0, 80)) &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidAdventureMatchProfile(data) {
+      return isBoundedString(data.userId, 1, 128) &&
+             isBoundedString(data.displayName, 1, 80) &&
+             isBoundedString(data.country, 1, 80) &&
+             isBoundedString(data.targetAdventureId, 1, 80) &&
+             isBoundedString(data.targetDestination, 1, 100) &&
+             (!('interests' in data) || isBoundedStringList(data.interests, 15, 40)) &&
+             isBoundedString(data.preferredLanguage, 1, 16) &&
+             isBoundedStringList(data.spokenLanguages, 15, 20) &&
+             data.experienceLevel in ['BEGINNER', 'INTERMEDIATE', 'EXPLORER'] &&
+             data.preferredDurationMinutes is int && data.preferredDurationMinutes >= 5 && data.preferredDurationMinutes <= 180 &&
+             isBoundedString(data.availableTimeSlot, 1, 80) &&
+             data.voicePreferred is bool &&
+             data.isAvailable is bool &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidNiloraCrew(data) {
+      return isBoundedString(data.name, 2, 80) &&
+             (!('description' in data) || isBoundedString(data.description, 0, 400)) &&
+             isBoundedString(data.leaderId, 1, 128) &&
+             isBoundedStringList(data.memberIds, 30, 128) &&
+             data.leaderId in data.memberIds &&
+             data.memberNames is map && data.memberNames.size() <= 30 &&
+             data.memberCountries is map && data.memberCountries.size() <= 30 &&
+             (!('sharedInterests' in data) || isBoundedStringList(data.sharedInterests, 15, 40)) &&
+             isBoundedString(data.focusDestination, 1, 100) &&
+             (!('plannedAdventureIds' in data) || isBoundedStringList(data.plannedAdventureIds, 20, 80)) &&
+             (!('adventureHistoryTitles' in data) || isBoundedStringList(data.adventureHistoryTitles, 30, 120)) &&
+             data.joinPolicy in ['OPEN', 'INVITE_ONLY'] &&
+             data.voiceChannelEnabled is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidCrewMessage(data) {
+      return isBoundedString(data.crewId, 1, 128) &&
+             isBoundedString(data.senderId, 1, 128) &&
+             isBoundedString(data.senderName, 1, 80) &&
+             isBoundedString(data.originalText, 1, 1500) &&
+             isBoundedString(data.sourceLanguage, 1, 16) &&
+             (!('translations' in data) || (data.translations is map && data.translations.size() <= 20)) &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isCrewMember(crewId) {
+      return exists(/databases/$(database)/documents/nilora_crews/$(crewId)) &&
+             request.auth.uid in get(/databases/$(database)/documents/nilora_crews/$(crewId)).data.memberIds;
+    }
+
+    // --- PHASE 2 REALITY CONNECTED UNIVERSE HELPERS ---
+
+    function isValidRealityEvent(data) {
+      return isBoundedString(data.creatorId, 1, 128) &&
+             isBoundedString(data.creatorName, 1, 80) &&
+             isBoundedString(data.title, 2, 140) &&
+             data.category in ['CULTURAL', 'FESTIVAL', 'MUSIC', 'SPORTS', 'TOURNAMENT', 'COMMUNITY', 'EXHIBITION', 'CONFERENCE', 'TOURISM', 'OUTDOOR', 'EDUCATIONAL', 'SEASONAL'] &&
+             isBoundedString(data.description, 2, 2000) &&
+             isBoundedString(data.countryCode, 2, 10) &&
+             isBoundedString(data.countryName, 1, 80) &&
+             isBoundedString(data.cityName, 1, 80) &&
+             isBoundedString(data.venueName, 1, 140) &&
+             data.hasVerifiedCoordinates is bool &&
+             (!('latitude' in data) || (data.latitude is number && data.latitude >= -90 && data.latitude <= 90)) &&
+             (!('longitude' in data) || (data.longitude is number && data.longitude >= -180 && data.longitude <= 180)) &&
+             isBoundedString(data.startDateIso, 4, 40) &&
+             (!('endDateIso' in data) || isBoundedString(data.endDateIso, 0, 40)) &&
+             (!('timeWindowLabel' in data) || isBoundedString(data.timeWindowLabel, 0, 80)) &&
+             data.freeVerified is bool &&
+             (!('priceNote' in data) || isBoundedString(data.priceNote, 0, 160)) &&
+             isBoundedString(data.organizerName, 1, 120) &&
+             data.organizerType in ['OFFICIAL_INSTITUTION', 'CULTURAL_CENTER', 'LOCAL_COMMUNITY', 'SPORTS_CLUB', 'USER_ORGANIZER', 'EXTERNAL_OPEN_SOURCE'] &&
+             (!('officialUrl' in data) || isBoundedString(data.officialUrl, 0, 400)) &&
+             (!('conditionsNote' in data) || isBoundedString(data.conditionsNote, 0, 400)) &&
+             (!('safetyNote' in data) || isBoundedString(data.safetyNote, 0, 400)) &&
+             data.ageMinimum is int && data.ageMinimum >= 0 && data.ageMinimum <= 99 &&
+             data.verificationTier in ['ADMIN_VERIFIED', 'UNVERIFIED_USER_SUBMITTED', 'EXTERNAL_OPEN_SOURCE'] &&
+             (!('lastVerifiedLabel' in data) || isBoundedString(data.lastVerifiedLabel, 0, 80)) &&
+             data.status in ['UPCOMING', 'ACTIVE', 'CANCELLED', 'COMPLETED'] &&
+             data.maxParticipants is int && data.maxParticipants >= 2 && data.maxParticipants <= 500 &&
+             isBoundedStringList(data.participantIds, 200, 128) &&
+             data.creatorId in data.participantIds &&
+             data.participantNames is map && data.participantNames.size() <= 200 &&
+             isBoundedStringList(data.pendingRequestIds, 100, 128) &&
+             data.joinPolicy in ['OPEN', 'REQUEST_APPROVAL'] &&
+             (!('linkedAdventureId' in data) || isBoundedString(data.linkedAdventureId, 0, 80)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidRealityEventMessage(data) {
+      return isBoundedString(data.eventId, 1, 128) &&
+             isBoundedString(data.senderId, 1, 128) &&
+             isBoundedString(data.senderName, 1, 80) &&
+             isBoundedString(data.originalText, 1, 1500) &&
+             isBoundedString(data.sourceLanguage, 1, 16) &&
+             (!('translations' in data) || (data.translations is map && data.translations.size() <= 20)) &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isEventParticipant(eventId) {
+      return exists(/databases/$(database)/documents/reality_events/$(eventId)) &&
+             request.auth.uid in get(/databases/$(database)/documents/reality_events/$(eventId)).data.participantIds;
+    }
+
+    function isValidTeamActivityPost(data) {
+      return isBoundedString(data.creatorId, 1, 128) &&
+             isBoundedString(data.creatorName, 1, 80) &&
+             data.domain in ['GO_TOGETHER', 'PLAY_SPORTS', 'SOCIAL_GAME', 'ADVENTURE_OUTDOOR', 'COMMUNITY_IMPACT'] &&
+             isBoundedString(data.subCategory, 2, 48) &&
+             isBoundedString(data.title, 2, 140) &&
+             isBoundedString(data.description, 2, 2000) &&
+             isBoundedString(data.countryName, 1, 80) &&
+             isBoundedString(data.cityName, 1, 80) &&
+             isBoundedString(data.publicMeetingSpot, 2, 140) &&
+             (!('latitude' in data) || (data.latitude is number && data.latitude >= -90 && data.latitude <= 90)) &&
+             (!('longitude' in data) || (data.longitude is number && data.longitude >= -180 && data.longitude <= 180)) &&
+             isBoundedString(data.scheduledDateLabel, 2, 60) &&
+             data.skillLevel in ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'ALL_LEVELS'] &&
+             (!('equipmentNote' in data) || isBoundedString(data.equipmentNote, 0, 300)) &&
+             isBoundedString(data.safetyRules, 1, 400) &&
+             data.ageMinimum is int && data.ageMinimum >= 13 && data.ageMinimum <= 99 &&
+             data.joinPolicy in ['PUBLIC', 'REQUEST_APPROVAL', 'INVITE_ONLY'] &&
+             data.teamStatus in ['LOOKING_FOR_PARTICIPANTS', 'GROUP_FORMING', 'GROUP_FULL', 'ACTIVITY_CONFIRMED', 'ACTIVITY_COMPLETED', 'ACTIVITY_CANCELLED'] &&
+             data.maxParticipants is int && data.maxParticipants >= 2 && data.maxParticipants <= 50 &&
+             isBoundedStringList(data.participantIds, 50, 128) &&
+             data.creatorId in data.participantIds &&
+             data.participantNames is map && data.participantNames.size() <= 50 &&
+             isBoundedStringList(data.pendingRequestIds, 50, 128) &&
+             isBoundedStringList(data.invitedUserIds, 50, 128) &&
+             (!('impactOrganizationName' in data) || isBoundedString(data.impactOrganizationName, 0, 120)) &&
+             data.impactVerifiedByAdmin is bool &&
+             (!('linkedAdventureId' in data) || isBoundedString(data.linkedAdventureId, 0, 80)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidActivityGroupMessage(data) {
+      return isBoundedString(data.activityId, 1, 128) &&
+             isBoundedString(data.senderId, 1, 128) &&
+             isBoundedString(data.senderName, 1, 80) &&
+             isBoundedString(data.originalText, 1, 1500) &&
+             isBoundedString(data.sourceLanguage, 1, 16) &&
+             (!('translations' in data) || (data.translations is map && data.translations.size() <= 20)) &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isActivityParticipant(activityId) {
+      return exists(/databases/$(database)/documents/reality_activities/$(activityId)) &&
+             request.auth.uid in get(/databases/$(database)/documents/reality_activities/$(activityId)).data.participantIds;
+    }
+
+    function isValidRealityMission(data) {
+      return isBoundedString(data.creatorId, 1, 128) &&
+             isBoundedString(data.creatorName, 1, 80) &&
+             isBoundedString(data.templateType, 2, 48) &&
+             data.executionMode in ['REAL_WORLD', 'VIRTUAL'] &&
+             isBoundedString(data.title, 2, 120) &&
+             isBoundedString(data.objective, 4, 500) &&
+             isBoundedString(data.cityName, 1, 80) &&
+             isBoundedString(data.countryName, 1, 80) &&
+             (!('latitude' in data) || (data.latitude is number && data.latitude >= -90 && data.latitude <= 90)) &&
+             (!('longitude' in data) || (data.longitude is number && data.longitude >= -180 && data.longitude <= 180)) &&
+             isBoundedString(data.safetyAndEcoRules, 2, 500) &&
+             data.targetSteps is int && data.targetSteps >= 1 && data.targetSteps <= 30 &&
+             isBoundedStringList(data.participantIds, 100, 128) &&
+             data.submissionsCount is int && data.submissionsCount >= 0 && data.submissionsCount <= 500 &&
+             data.status in ['ACTIVE', 'COMPLETED'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidMissionSubmission(data) {
+      return isBoundedString(data.missionId, 1, 128) &&
+             isBoundedString(data.authorId, 1, 128) &&
+             isBoundedString(data.authorName, 1, 80) &&
+             data.submissionMode in ['REAL_WORLD_LOG', 'VIRTUAL_PROGRESS'] &&
+             isBoundedString(data.reflectionText, 1, 1500) &&
+             isBoundedString(data.placeLabel, 1, 120) &&
+             (!('photoBase64' in data) || isBoundedString(data.photoBase64, 0, 220000)) &&
+             data.ecoSafetyConfirmed == true &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidGlobalChallenge(data) {
+      return isBoundedString(data.creatorId, 1, 128) &&
+             isBoundedString(data.creatorName, 1, 80) &&
+             data.challengeScope in ['INDIVIDUAL', 'TEAM', 'INTERNATIONAL'] &&
+             isBoundedString(data.category, 2, 48) &&
+             isBoundedString(data.title, 2, 120) &&
+             isBoundedString(data.description, 4, 600) &&
+             data.targetGoal is int && data.targetGoal >= 1 && data.targetGoal <= 500 &&
+             isBoundedStringList(data.participantIds, 200, 128) &&
+             isBoundedStringList(data.participantCountries, 100, 80) &&
+             data.entriesCount is int && data.entriesCount >= 0 && data.entriesCount <= 1000 &&
+             isBoundedString(data.cityName, 1, 80) &&
+             isBoundedString(data.countryName, 1, 80) &&
+             (!('latitude' in data) || (data.latitude is number && data.latitude >= -90 && data.latitude <= 90)) &&
+             (!('longitude' in data) || (data.longitude is number && data.longitude >= -180 && data.longitude <= 180)) &&
+             data.status in ['ACTIVE', 'COMPLETED'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidChallengeEntry(data) {
+      return isBoundedString(data.challengeId, 1, 128) &&
+             isBoundedString(data.authorId, 1, 128) &&
+             isBoundedString(data.authorName, 1, 80) &&
+             isBoundedString(data.countryName, 1, 80) &&
+             (!('teamName' in data) || isBoundedString(data.teamName, 0, 80)) &&
+             isBoundedString(data.summaryText, 1, 1000) &&
+             data.pointsClaimed is int && data.pointsClaimed >= 1 && data.pointsClaimed <= 10 &&
+             data.verificationLabel in ['USER_SUBMITTED', 'PARTICIPANT_CONFIRMED', 'ADMIN_VERIFIED'] &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidRealityBridgeLink(data) {
+      return isBoundedString(data.userId, 1, 128) &&
+             isBoundedString(data.virtualAdventureId, 1, 80) &&
+             isBoundedString(data.virtualAdventureTitle, 2, 120) &&
+             isBoundedString(data.destinationName, 1, 100) &&
+             data.targetType in ['REALITY_EVENT', 'TEAM_ACTIVITY', 'BOOKING_ACTIVITY', 'REAL_WORLD_MISSION', 'NILORA_MEMORY'] &&
+             isBoundedString(data.targetId, 1, 128) &&
+             isBoundedString(data.targetTitle, 1, 140) &&
+             data.stage in ['VIRTUAL', 'PLANNED', 'REGISTERED', 'CONFIRMED', 'COMPLETED'] &&
+             (!('notes' in data) || isBoundedString(data.notes, 0, 500)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    // --- COLLECTION RULES ---
+
+    match /admin_users/{uid} {
+      allow get: if isValidId(uid) && (isOwner(uid) || isAdmin());
+      allow list: if isAdmin();
+      allow create, update: if isValidId(uid) && isAdmin() && isValidAdminUser(incoming());
+      allow delete: if isValidId(uid) && isAdmin();
+    }
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(userId) &&
+                       isOwner(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'accountMode', 'preferredLanguage', 'country', 'privacyConsent', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'accountMode', 'preferredLanguage', 'nativeLanguage', 'spokenLanguages', 'learningLanguages', 'interests', 'country', 'city', 'photoUri', 'bio', 'profileVisibility', 'openToLanguageExchange', 'privacyConsent', 'retainTranslationHistory', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming());
+      allow update: if isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       (isAdmin() || (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'accountMode', 'preferredLanguage', 'nativeLanguage', 'spokenLanguages', 'learningLanguages', 'interests', 'country', 'city', 'photoUri', 'bio', 'profileVisibility', 'openToLanguageExchange', 'privacyConsent', 'retainTranslationHistory', 'updatedAt'])));
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+
+      match /private/{docId} {
+        allow get: if isValidId(docId) && (isOwner(userId) || isAdmin());
+        allow list: if isOwner(userId) || isAdmin();
+        allow create: if isValidId(docId) && isOwner(userId) && incoming().userId == request.auth.uid && isValidUserPrivateInfo(incoming());
+        allow update: if isValidId(docId) && isOwner(userId) && isValidUserPrivateInfo(incoming()) && incoming().userId == existing().userId;
+        allow delete: if isValidId(docId) && (isOwner(userId) || isAdmin());
+      }
+
+      match /blocked/{blockedUserId} {
+        allow get: if isValidId(blockedUserId) && isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isValidId(blockedUserId) && isOwner(userId) && incoming().blockerId == request.auth.uid && incoming().blockedUserId == blockedUserId && isValidBlockedUser(incoming());
+        allow update: if false;
+        allow delete: if isValidId(blockedUserId) && isOwner(userId);
+      }
+
+      match /favorites/{favId} {
+        allow get: if isValidId(favId) && isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isValidId(favId) && isOwner(userId) && incoming().userId == request.auth.uid && isValidFavoriteItem(incoming());
+        allow update: if false;
+        allow delete: if isValidId(favId) && isOwner(userId);
+      }
+
+      match /travel_notes/{noteId} {
+        allow get: if isValidId(noteId) && isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isValidId(noteId) && isOwner(userId) && incoming().userId == request.auth.uid && isValidTravelNote(incoming());
+        allow update: if isValidId(noteId) && isOwner(userId) && isValidTravelNote(incoming()) && incoming().userId == existing().userId && incoming().createdAt == existing().createdAt;
+        allow delete: if isValidId(noteId) && isOwner(userId);
+      }
+
+      match /notifications/{notifId} {
+        allow get: if isValidId(notifId) && (isOwner(userId) || isAdmin());
+        allow list: if isOwner(userId) || isAdmin();
+        allow create: if isValidId(notifId) && isSignedIn() && (isOwner(userId) || isAdmin() || (incoming().category in ['COMMUNITY', 'GROUP', 'EXPERIENCE', 'ADVENTURE', 'REALITY'] && !isBlockedBetween(userId, request.auth.uid))) && incoming().userId == userId && isValidNotification(incoming());
+        allow update: if isValidId(notifId) && isOwner(userId) && isValidNotification(incoming()) && incoming().userId == existing().userId && incoming().createdAt == existing().createdAt && incoming().diff(existing()).affectedKeys().hasOnly(['readStatus']);
+        allow delete: if isValidId(notifId) && isOwner(userId);
+      }
+
+      match /reality_bridge/{bridgeId} {
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create: if isValidId(bridgeId) && isOwner(userId) && isValidRealityBridgeLink(incoming()) && incoming().userId == request.auth.uid;
+        allow update: if isValidId(bridgeId) && (isOwner(userId) || isAdmin()) && isValidRealityBridgeLink(incoming()) && incoming().userId == existing().userId && incoming().createdAt == existing().createdAt;
+        allow delete: if isValidId(bridgeId) && (isOwner(userId) || isAdmin());
+      }
+    }
+
+    // Voluntarily discoverable global community profiles
+    match /public_profiles/{userId} {
+      allow get: if isValidId(userId) && isSignedIn() && (
+        isOwner(userId) ||
+        isAdmin() ||
+        (!isBlockedBetween(userId, request.auth.uid) && (
+          existing().profileVisibility == 'PUBLIC' ||
+          (existing().profileVisibility == 'CONNECTIONS_ONLY' && isConnected(request.auth.uid, userId))
+        ))
+      );
+      allow list: if isSignedIn() && (existing().profileVisibility == 'PUBLIC' || isOwner(userId) || isAdmin());
+      allow create: if isValidId(userId) && isOwner(userId) && incoming().userId == request.auth.uid && isValidPublicProfile(incoming());
+      allow update: if isValidId(userId) && (isOwner(userId) || isAdmin()) && isValidPublicProfile(incoming()) && incoming().userId == existing().userId && incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+    }
+
+    // Global connection / language-exchange requests
+    match /connection_requests/{requestId} {
+      allow get: if isValidId(requestId) && isSignedIn() && (request.auth.uid in existing().memberUids || isAdmin());
+      allow list: if isSignedIn() && (request.auth.uid in existing().memberUids || isAdmin());
+      allow create: if isValidId(requestId) && isSignedIn() && isValidConnectionRequest(incoming()) && incoming().senderId == request.auth.uid && incoming().status == 'PENDING' && !isBlockedBetween(incoming().senderId, incoming().receiverId);
+      allow update: if isValidId(requestId) && isSignedIn() && isValidConnectionRequest(incoming()) &&
+                       incoming().senderId == existing().senderId &&
+                       incoming().receiverId == existing().receiverId &&
+                       incoming().memberUids == existing().memberUids &&
+                       incoming().createdAt == existing().createdAt && (
+                         isAdmin() || (
+                           existing().status == 'PENDING' &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) && (
+                             (existing().receiverId == request.auth.uid && incoming().status in ['ACCEPTED', 'DECLINED']) ||
+                             (existing().senderId == request.auth.uid && incoming().status == 'CANCELLED')
+                           )
+                         )
+                       );
+      allow delete: if isValidId(requestId) && isSignedIn() && (request.auth.uid in existing().memberUids || isAdmin());
+    }
+
+    // One-to-one direct conversations & messages
+    match /direct_conversations/{conversationId} {
+      allow get: if isValidId(conversationId) && isSignedIn() && (request.auth.uid in existing().participantIds || isAdmin());
+      allow list: if isSignedIn() && (request.auth.uid in existing().participantIds || isAdmin());
+      allow create: if isValidId(conversationId) && isSignedIn() && isValidDirectConversation(incoming()) &&
+                       request.auth.uid in incoming().participantIds &&
+                       conversationId == pairDocId(incoming().participantIds[0], incoming().participantIds[1]) &&
+                       !isBlockedBetween(incoming().participantIds[0], incoming().participantIds[1]);
+      allow update: if isValidId(conversationId) && isSignedIn() && isValidDirectConversation(incoming()) &&
+                       request.auth.uid in existing().participantIds &&
+                       incoming().participantIds == existing().participantIds &&
+                       incoming().createdAt == existing().createdAt &&
+                       !isBlockedBetween(existing().participantIds[0], existing().participantIds[1]) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['participantNames', 'participantLanguages', 'lastMessagePreview', 'lastMessageSenderId', 'updatedAt']);
+      allow delete: if isValidId(conversationId) && isAdmin();
+
+      match /messages/{messageId} {
+        allow get: if isValidId(messageId) && isSignedIn() && (request.auth.uid in existing().participantIds || isAdmin());
+        allow list: if isSignedIn() && (
+          isAdmin() ||
+          request.auth.uid in get(/databases/$(database)/documents/direct_conversations/$(conversationId)).data.participantIds
+        );
+        allow create: if isValidId(messageId) && isSignedIn() && isValidDirectMessage(incoming()) &&
+                         incoming().conversationId == conversationId &&
+                         incoming().senderId == request.auth.uid &&
+                         request.auth.uid in incoming().participantIds &&
+                         exists(/databases/$(database)/documents/direct_conversations/$(conversationId)) &&
+                         incoming().participantIds == get(/databases/$(database)/documents/direct_conversations/$(conversationId)).data.participantIds &&
+                         !isBlockedBetween(incoming().participantIds[0], incoming().participantIds[1]);
+        allow update: if isValidId(messageId) && isSignedIn() && isValidDirectMessage(incoming()) &&
+                         request.auth.uid in existing().participantIds &&
+                         incoming().conversationId == existing().conversationId &&
+                         incoming().participantIds == existing().participantIds &&
+                         incoming().senderId == existing().senderId &&
+                         incoming().originalText == existing().originalText &&
+                         incoming().createdAt == existing().createdAt && (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['translations', 'translationConfidence', 'translationNote']) ||
+                           (existing().senderId != request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['deliveryStatus']) && incoming().deliveryStatus in ['DELIVERED', 'READ'])
+                         );
+        allow delete: if isValidId(messageId) && (isAdmin() || (isSignedIn() && existing().senderId == request.auth.uid));
+      }
+    }
+
+    // Multilingual community groups
+    match /groups/{groupId} {
+      allow get: if isValidId(groupId) && isSignedIn() && (
+        isAdmin() ||
+        request.auth.uid in existing().memberIds ||
+        (!(request.auth.uid in existing().bannedIds) && existing().joinPolicy in ['OPEN', 'REQUEST_APPROVAL'])
+      );
+      allow list: if isSignedIn() && (
+        isAdmin() ||
+        request.auth.uid in existing().memberIds ||
+        existing().joinPolicy in ['OPEN', 'REQUEST_APPROVAL']
+      );
+      allow create: if isValidId(groupId) && isSignedIn() && isValidGroupRoom(incoming()) &&
+                       incoming().ownerId == request.auth.uid &&
+                       request.auth.uid in incoming().memberIds &&
+                       request.auth.uid in incoming().moderatorIds &&
+                       incoming().bannedIds.size() == 0;
+      allow update: if isValidId(groupId) && isSignedIn() && isValidGroupRoom(incoming()) &&
+                       incoming().ownerId == existing().ownerId &&
+                       incoming().createdAt == existing().createdAt && (
+                         isAdmin() ||
+                         existing().ownerId == request.auth.uid ||
+                         // Moderator can manage members, bans, and description while keeping owner in room
+                         (request.auth.uid in existing().moderatorIds &&
+                          existing().ownerId in incoming().memberIds &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['memberIds', 'bannedIds', 'description', 'updatedAt'])) ||
+                         // Non-banned user joining OPEN group (only adding self)
+                         (existing().joinPolicy == 'OPEN' &&
+                          !(request.auth.uid in existing().bannedIds) &&
+                          !(request.auth.uid in existing().memberIds) &&
+                          request.auth.uid in incoming().memberIds &&
+                          incoming().memberIds.size() == existing().memberIds.size() + 1 &&
+                          incoming().memberIds.hasAll(existing().memberIds) &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['memberIds', 'updatedAt'])) ||
+                         // Non-owner member leaving group (only removing self)
+                         (request.auth.uid in existing().memberIds &&
+                          request.auth.uid != existing().ownerId &&
+                          !(request.auth.uid in incoming().memberIds) &&
+                          existing().memberIds.hasAll(incoming().memberIds) &&
+                          incoming().memberIds.size() == existing().memberIds.size() - 1 &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['memberIds', 'updatedAt']))
+                       );
+      allow delete: if isValidId(groupId) && isSignedIn() && (existing().ownerId == request.auth.uid || isAdmin());
+
+      match /join_requests/{reqId} {
+        allow get: if isValidId(reqId) && isSignedIn() && (isOwner(reqId) || isGroupModeratorOrOwner(groupId) || isAdmin());
+        allow list: if isSignedIn() && (existing().userId == request.auth.uid || isGroupModeratorOrOwner(groupId) || isAdmin());
+        allow create: if isValidId(reqId) && isSignedIn() && isValidGroupJoinRequest(incoming()) &&
+                         incoming().groupId == groupId &&
+                         incoming().userId == reqId &&
+                         incoming().status == 'PENDING' && (
+                           (reqId == request.auth.uid && incoming().requestType == 'JOIN_REQUEST') ||
+                           (isGroupModeratorOrOwner(groupId) && incoming().requestType == 'INVITE')
+                         );
+        allow update: if isValidId(reqId) && isSignedIn() && isValidGroupJoinRequest(incoming()) &&
+                         incoming().groupId == existing().groupId &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) && (
+                           isAdmin() ||
+                           isGroupModeratorOrOwner(groupId) ||
+                           (reqId == request.auth.uid && existing().requestType == 'INVITE' && incoming().status in ['APPROVED', 'DECLINED'])
+                         );
+        allow delete: if isValidId(reqId) && isSignedIn() && (isOwner(reqId) || isGroupModeratorOrOwner(groupId) || isAdmin());
+      }
+
+      match /messages/{messageId} {
+        allow get: if isValidId(messageId) && isSignedIn() && (isGroupMember(groupId) || isAdmin());
+        allow list: if isSignedIn() && (isGroupMember(groupId) || isAdmin());
+        allow create: if isValidId(messageId) && isSignedIn() && isGroupMember(groupId) && isValidGroupMessage(incoming()) && incoming().groupId == groupId && incoming().senderId == request.auth.uid;
+        allow update: if isValidId(messageId) && isSignedIn() && isGroupMember(groupId) && isValidGroupMessage(incoming()) &&
+                         incoming().groupId == existing().groupId &&
+                         incoming().senderId == existing().senderId &&
+                         incoming().originalText == existing().originalText &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['translations', 'translationNote']);
+        allow delete: if isValidId(messageId) && isSignedIn() && (isAdmin() || isGroupModeratorOrOwner(groupId) || existing().senderId == request.auth.uid);
+      }
+    }
+
+    match /countries/{countryId} {
+      allow get: if isValidId(countryId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isValidId(countryId) && isAdmin() && isValidCountry(incoming());
+      allow delete: if isValidId(countryId) && isAdmin();
+    }
+
+    match /cities/{cityId} {
+      allow get: if isValidId(cityId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isValidId(cityId) && isAdmin() && isValidCity(incoming());
+      allow delete: if isValidId(cityId) && isAdmin();
+    }
+
+    match /destinations/{destinationId} {
+      allow get: if isValidId(destinationId) && isSignedIn() && (existing().verificationStatus == 'APPROVED' || existing().submittedBy == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().verificationStatus == 'APPROVED' || existing().submittedBy == request.auth.uid || isAdmin());
+      allow create: if isValidId(destinationId) && isSignedIn() && isValidDestination(incoming()) && incoming().submittedBy == request.auth.uid && (isAdmin() || incoming().verificationStatus == 'PENDING');
+      allow update: if isValidId(destinationId) && isSignedIn() && isValidDestination(incoming()) && incoming().submittedBy == existing().submittedBy && incoming().createdAt == existing().createdAt && (isAdmin() || (existing().submittedBy == request.auth.uid && incoming().verificationStatus == existing().verificationStatus));
+      allow delete: if isValidId(destinationId) && isAdmin();
+    }
+
+    match /activities/{activityId} {
+      allow get: if isValidId(activityId) && isSignedIn() && (existing().verificationStatus == 'APPROVED' || existing().providerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().verificationStatus == 'APPROVED' || existing().providerId == request.auth.uid || isAdmin());
+      allow create: if isValidId(activityId) && isSignedIn() && isValidActivity(incoming()) && incoming().providerId == request.auth.uid && (isAdmin() || (isApprovedProvider(request.auth.uid) && incoming().verificationStatus == 'PENDING'));
+      allow update: if isValidId(activityId) && isSignedIn() && isValidActivity(incoming()) && incoming().providerId == existing().providerId && incoming().createdAt == existing().createdAt && (isAdmin() || (existing().providerId == request.auth.uid && incoming().verificationStatus == existing().verificationStatus && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'durationLabel', 'priceAmount', 'currency', 'priceOnRequest', 'availabilityStatus', 'includedServices', 'exclusions', 'cancellationPolicy', 'safetyRequirements', 'updatedAt'])));
+      allow delete: if isValidId(activityId) && isAdmin();
+    }
+
+    match /providers/{providerId} {
+      allow get: if isValidId(providerId) && isSignedIn() && (existing().verificationStatus == 'APPROVED' || existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().verificationStatus == 'APPROVED' || existing().userId == request.auth.uid || isAdmin());
+      allow create: if isValidId(providerId) && isSignedIn() && providerId == request.auth.uid && incoming().userId == request.auth.uid && isValidProvider(incoming()) && (isAdmin() || incoming().verificationStatus == 'PENDING');
+      allow update: if isValidId(providerId) && isSignedIn() && isValidProvider(incoming()) && incoming().userId == existing().userId && incoming().createdAt == existing().createdAt && (
+        isAdmin() ||
+        (existing().userId == request.auth.uid && incoming().verificationStatus == 'PENDING' && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'serviceType', 'languages', 'citiesCovered', 'bio', 'licenseNumber', 'documentSummary', 'documentRefUri', 'verificationStatus', 'updatedAt']))
+      );
+      allow delete: if isValidId(providerId) && isAdmin();
+    }
+
+    match /bookings/{bookingId} {
+      allow get: if isValidId(bookingId) && isSignedIn() && (existing().travelerId == request.auth.uid || existing().providerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().travelerId == request.auth.uid || existing().providerId == request.auth.uid || isAdmin());
+      allow create: if isValidId(bookingId) && isSignedIn() && isValidBooking(incoming()) && incoming().travelerId == request.auth.uid && incoming().status in ['REQUEST_SUBMITTED', 'AWAITING_PROVIDER_CONFIRMATION'] && incoming().paymentStatus in ['NOT_CONFIGURED', 'PENDING'];
+      allow update: if isValidId(bookingId) && isSignedIn() && isValidBooking(incoming()) && incoming().travelerId == existing().travelerId && incoming().providerId == existing().providerId && incoming().activityId == existing().activityId && incoming().createdAt == existing().createdAt && (
+        isAdmin() ||
+        (!(existing().status in ['CANCELLED', 'REJECTED']) && (
+          (existing().travelerId == request.auth.uid && incoming().status == 'CANCELLED' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'cancellationReason', 'updatedAt'])) ||
+          (existing().providerId == request.auth.uid && incoming().status in ['AWAITING_PROVIDER_CONFIRMATION', 'CONFIRMED', 'REJECTED'] && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'cancellationReason', 'updatedAt']))
+        ))
+      );
+      allow delete: if isValidId(bookingId) && isAdmin();
+    }
+
+    match /conversation_rooms/{roomId} {
+      allow get: if isValidId(roomId) && isSignedIn() && (request.auth.uid in existing().memberUids || (existing().status == 'WAITING' && existing().memberUids.size() < 2) || isAdmin());
+      allow list: if isSignedIn() && (request.auth.uid in existing().memberUids || isAdmin());
+      allow create: if isValidId(roomId) && isSignedIn() && isValidConversationRoom(incoming()) && incoming().hostId == request.auth.uid && incoming().memberUids.size() == 1 && request.auth.uid in incoming().memberUids && incoming().status == 'WAITING';
+      allow update: if isValidId(roomId) && isSignedIn() && isValidConversationRoom(incoming()) && incoming().hostId == existing().hostId && incoming().roomCode == existing().roomCode && incoming().createdAt == existing().createdAt && (
+        isAdmin() ||
+        (existing().status == 'WAITING' && existing().memberUids.size() == 1 && !(request.auth.uid in existing().memberUids) && incoming().memberUids.size() == 2 && request.auth.uid in incoming().memberUids && existing().hostId in incoming().memberUids && incoming().guestId == request.auth.uid && incoming().status == 'ACTIVE' && incoming().diff(existing()).affectedKeys().hasOnly(['guestId', 'guestName', 'guestLanguage', 'memberUids', 'status', 'updatedAt'])) ||
+        (request.auth.uid in existing().memberUids && existing().status != 'ENDED' && incoming().memberUids == existing().memberUids && incoming().diff(existing()).affectedKeys().hasOnly(['hostLanguage', 'guestLanguage', 'status', 'retainTranscript', 'updatedAt']))
+      );
+      allow delete: if isValidId(roomId) && (isOwner(existing().hostId) || isAdmin());
+
+      match /messages/{messageId} {
+        allow get: if isValidId(messageId) && isSignedIn() && (request.auth.uid in existing().memberUids || isAdmin());
+        allow list: if isSignedIn() && (request.auth.uid in existing().memberUids || isAdmin());
+        allow create: if isValidId(messageId) && isSignedIn() && isValidConversationMessage(incoming()) && incoming().senderId == request.auth.uid && request.auth.uid in incoming().memberUids && exists(/databases/$(database)/documents/conversation_rooms/$(roomId)) && request.auth.uid in get(/databases/$(database)/documents/conversation_rooms/$(roomId)).data.memberUids;
+        allow update: if false;
+        allow delete: if isValidId(messageId) && (isAdmin() || (isSignedIn() && request.auth.uid in existing().memberUids));
+      }
+    }
+
+    match /reports/{reportId} {
+      allow get: if isValidId(reportId) && isSignedIn() && (existing().reporterId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().reporterId == request.auth.uid || isAdmin());
+      allow create: if isValidId(reportId) && isSignedIn() && isValidReport(incoming()) && incoming().reporterId == request.auth.uid && incoming().status == 'OPEN';
+      allow update: if isValidId(reportId) && isAdmin() && isValidReport(incoming()) && incoming().reporterId == existing().reporterId && incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(reportId) && isAdmin();
+    }
+
+    match /data_sources/{sourceId} {
+      allow get: if isValidId(sourceId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update: if isValidId(sourceId) && isAdmin() && isValidDataSource(incoming());
+      allow delete: if isValidId(sourceId) && isAdmin();
+    }
+
+    match /audit_logs/{logId} {
+      allow get: if isValidId(logId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(logId) && isSignedIn() && isValidAuditLog(incoming()) && incoming().actorId == request.auth.uid && (isAdmin() || incoming().severity == 'INFO');
+      allow update, delete: if false;
+    }
+
+    // --- NEXT-GEN HUMAN CONNECTION: WORLD POSTCARD, CULTURE SWAP, WORLD QUEST, NILORA MEMORY ---
+
+    match /world_postcards/{postcardId} {
+      allow get: if isValidId(postcardId) && isSignedIn() && (
+        isAdmin() ||
+        existing().authorId == request.auth.uid ||
+        (!isBlockedBetween(existing().authorId, request.auth.uid) && (
+          existing().visibility == 'PUBLIC' ||
+          request.auth.uid in existing().participantIds
+        ))
+      );
+      allow list: if isSignedIn() && (
+        isAdmin() ||
+        existing().visibility == 'PUBLIC' ||
+        existing().authorId == request.auth.uid ||
+        request.auth.uid in existing().participantIds
+      );
+      allow create: if isValidId(postcardId) && isSignedIn() && isValidWorldPostcard(incoming()) &&
+                       incoming().authorId == request.auth.uid &&
+                       incoming().participantIds.size() == 1 &&
+                       request.auth.uid in incoming().participantIds &&
+                       incoming().contributionsCount == 0;
+      allow update: if isValidId(postcardId) && isSignedIn() && isValidWorldPostcard(incoming()) &&
+                       incoming().authorId == existing().authorId &&
+                       incoming().createdAt == existing().createdAt && (
+                         isAdmin() ||
+                         existing().authorId == request.auth.uid ||
+                         (!isBlockedBetween(existing().authorId, request.auth.uid) && existing().visibility == 'PUBLIC' && (
+                           (existing().allowReplies == true &&
+                            incoming().participantIds.hasAll(existing().participantIds) &&
+                            request.auth.uid in incoming().participantIds &&
+                            incoming().contributionsCount == existing().contributionsCount + 1 &&
+                            incoming().diff(existing()).affectedKeys().hasOnly(['participantIds', 'countriesChain', 'contributionsCount', 'updatedAt'])) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['translations', 'translationNote'])
+                         ))
+                       );
+      allow delete: if isValidId(postcardId) && isSignedIn() && (existing().authorId == request.auth.uid || isAdmin());
+
+      match /contributions/{contributionId} {
+        allow get, list: if isSignedIn() && exists(/databases/$(database)/documents/world_postcards/$(postcardId)) && (
+          isAdmin() ||
+          get(/databases/$(database)/documents/world_postcards/$(postcardId)).data.authorId == request.auth.uid ||
+          (!isBlockedBetween(get(/databases/$(database)/documents/world_postcards/$(postcardId)).data.authorId, request.auth.uid) && (
+            get(/databases/$(database)/documents/world_postcards/$(postcardId)).data.visibility == 'PUBLIC' ||
+            request.auth.uid in get(/databases/$(database)/documents/world_postcards/$(postcardId)).data.participantIds
+          ))
+        );
+        allow create: if isValidId(contributionId) && isSignedIn() && isValidPostcardContribution(incoming()) &&
+                         incoming().postcardId == postcardId &&
+                         incoming().authorId == request.auth.uid &&
+                         exists(/databases/$(database)/documents/world_postcards/$(postcardId)) &&
+                         get(/databases/$(database)/documents/world_postcards/$(postcardId)).data.allowReplies == true &&
+                         get(/databases/$(database)/documents/world_postcards/$(postcardId)).data.visibility == 'PUBLIC' &&
+                         !isBlockedBetween(get(/databases/$(database)/documents/world_postcards/$(postcardId)).data.authorId, request.auth.uid);
+        allow update: if isValidId(contributionId) && isSignedIn() && isValidPostcardContribution(incoming()) &&
+                         incoming().postcardId == existing().postcardId &&
+                         incoming().authorId == existing().authorId &&
+                         incoming().responseText == existing().responseText &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['translations', 'translationNote']);
+        allow delete: if isValidId(contributionId) && isSignedIn() && (
+          isAdmin() ||
+          existing().authorId == request.auth.uid ||
+          get(/databases/$(database)/documents/world_postcards/$(postcardId)).data.authorId == request.auth.uid
+        );
+      }
+    }
+
+    match /culture_swaps/{swapId} {
+      allow get: if isValidId(swapId) && isSignedIn() && (
+        isAdmin() ||
+        existing().creatorId == request.auth.uid ||
+        request.auth.uid in existing().participantIds ||
+        (!isBlockedBetween(existing().creatorId, request.auth.uid) && existing().status in ['OPEN', 'EXCHANGED', 'COMPLETED'])
+      );
+      allow list: if isSignedIn() && (
+        isAdmin() ||
+        existing().creatorId == request.auth.uid ||
+        request.auth.uid in existing().participantIds ||
+        existing().status in ['OPEN', 'EXCHANGED', 'COMPLETED']
+      );
+      allow create: if isValidId(swapId) && isSignedIn() && isValidCultureSwap(incoming()) &&
+                       incoming().creatorId == request.auth.uid &&
+                       incoming().participantIds.size() == 1 &&
+                       request.auth.uid in incoming().participantIds;
+      allow update: if isValidId(swapId) && isSignedIn() && isValidCultureSwap(incoming()) &&
+                       incoming().creatorId == existing().creatorId &&
+                       incoming().createdAt == existing().createdAt && (
+                         isAdmin() ||
+                         existing().creatorId == request.auth.uid ||
+                         (!isBlockedBetween(existing().creatorId, request.auth.uid) &&
+                          incoming().participantIds.hasAll(existing().participantIds) &&
+                          request.auth.uid in incoming().participantIds &&
+                          incoming().participantIds.size() <= existing().maxParticipants &&
+                          incoming().entriesCount >= existing().entriesCount &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['participantIds', 'participantNames', 'participantCountries', 'entriesCount', 'status', 'updatedAt']))
+                       );
+      allow delete: if isValidId(swapId) && isSignedIn() && (existing().creatorId == request.auth.uid || isAdmin());
+
+      match /entries/{entryId} {
+        allow get, list: if isSignedIn() && exists(/databases/$(database)/documents/culture_swaps/$(swapId)) && (
+          isAdmin() ||
+          request.auth.uid in get(/databases/$(database)/documents/culture_swaps/$(swapId)).data.participantIds ||
+          !isBlockedBetween(get(/databases/$(database)/documents/culture_swaps/$(swapId)).data.creatorId, request.auth.uid)
+        );
+        allow create: if isValidId(entryId) && isSignedIn() && isValidCultureSwapEntry(incoming()) &&
+                         incoming().swapId == swapId &&
+                         incoming().authorId == request.auth.uid &&
+                         exists(/databases/$(database)/documents/culture_swaps/$(swapId)) &&
+                         !isBlockedBetween(get(/databases/$(database)/documents/culture_swaps/$(swapId)).data.creatorId, request.auth.uid) &&
+                         (request.auth.uid in get(/databases/$(database)/documents/culture_swaps/$(swapId)).data.participantIds ||
+                          get(/databases/$(database)/documents/culture_swaps/$(swapId)).data.participantIds.size() < get(/databases/$(database)/documents/culture_swaps/$(swapId)).data.maxParticipants);
+        allow update: if isValidId(entryId) && isSignedIn() && isValidCultureSwapEntry(incoming()) &&
+                         incoming().swapId == existing().swapId &&
+                         incoming().authorId == existing().authorId &&
+                         incoming().contentText == existing().contentText &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['translations', 'translationNote']);
+        allow delete: if isValidId(entryId) && isSignedIn() && (
+          isAdmin() ||
+          existing().authorId == request.auth.uid ||
+          get(/databases/$(database)/documents/culture_swaps/$(swapId)).data.creatorId == request.auth.uid
+        );
+      }
+    }
+
+    match /world_quests/{questId} {
+      allow get: if isValidId(questId) && isSignedIn() && (
+        isAdmin() ||
+        existing().creatorId == request.auth.uid ||
+        request.auth.uid in existing().participantIds ||
+        (!isBlockedBetween(existing().creatorId, request.auth.uid) && existing().status in ['ACTIVE', 'COMPLETED'])
+      );
+      allow list: if isSignedIn() && (
+        isAdmin() ||
+        existing().creatorId == request.auth.uid ||
+        request.auth.uid in existing().participantIds ||
+        existing().status in ['ACTIVE', 'COMPLETED']
+      );
+      allow create: if isValidId(questId) && isSignedIn() && isValidWorldQuest(incoming()) &&
+                       incoming().creatorId == request.auth.uid &&
+                       incoming().participantIds.size() == 1 &&
+                       request.auth.uid in incoming().participantIds &&
+                       incoming().contributionsCount == 0 &&
+                       incoming().status == 'ACTIVE';
+      allow update: if isValidId(questId) && isSignedIn() && isValidWorldQuest(incoming()) &&
+                       incoming().creatorId == existing().creatorId &&
+                       incoming().targetGoal == existing().targetGoal &&
+                       incoming().createdAt == existing().createdAt &&
+                       (incoming().status != 'COMPLETED' || incoming().contributionsCount >= existing().targetGoal) && (
+                         isAdmin() ||
+                         existing().creatorId == request.auth.uid ||
+                         (!isBlockedBetween(existing().creatorId, request.auth.uid) &&
+                          incoming().participantIds.hasAll(existing().participantIds) &&
+                          request.auth.uid in incoming().participantIds &&
+                          incoming().contributionsCount <= existing().contributionsCount + 1 &&
+                          incoming().contributionsCount >= existing().contributionsCount &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['participantIds', 'participantCountries', 'contributionsCount', 'status', 'updatedAt']))
+                       );
+      allow delete: if isValidId(questId) && isSignedIn() && (existing().creatorId == request.auth.uid || isAdmin());
+
+      match /contributions/{contributionId} {
+        allow get, list: if isSignedIn() && exists(/databases/$(database)/documents/world_quests/$(questId)) && (
+          isAdmin() ||
+          request.auth.uid in get(/databases/$(database)/documents/world_quests/$(questId)).data.participantIds ||
+          !isBlockedBetween(get(/databases/$(database)/documents/world_quests/$(questId)).data.creatorId, request.auth.uid)
+        );
+        allow create: if isValidId(contributionId) && isSignedIn() && isValidWorldQuestContribution(incoming()) &&
+                         incoming().questId == questId &&
+                         incoming().authorId == request.auth.uid &&
+                         exists(/databases/$(database)/documents/world_quests/$(questId)) &&
+                         !isBlockedBetween(get(/databases/$(database)/documents/world_quests/$(questId)).data.creatorId, request.auth.uid);
+        allow update: if isValidId(contributionId) && isSignedIn() && isValidWorldQuestContribution(incoming()) &&
+                         incoming().questId == existing().questId &&
+                         incoming().authorId == existing().authorId &&
+                         incoming().contentText == existing().contentText &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['translations', 'translationNote']);
+        allow delete: if isValidId(contributionId) && isSignedIn() && (
+          isAdmin() ||
+          existing().authorId == request.auth.uid ||
+          get(/databases/$(database)/documents/world_quests/$(questId)).data.creatorId == request.auth.uid
+        );
+      }
+    }
+
+    match /nilora_memories/{memoryId} {
+      allow get: if isValidId(memoryId) && isSignedIn() && (
+        isAdmin() ||
+        existing().ownerId == request.auth.uid ||
+        (!isBlockedBetween(existing().ownerId, request.auth.uid) && (
+          existing().visibility == 'PUBLIC' ||
+          (existing().visibility == 'SHARED_WITH_PARTICIPANTS' && request.auth.uid in existing().partnerIds)
+        ))
+      );
+      allow list: if isSignedIn() && (
+        isAdmin() ||
+        existing().ownerId == request.auth.uid ||
+        existing().visibility == 'PUBLIC' ||
+        (existing().visibility == 'SHARED_WITH_PARTICIPANTS' && request.auth.uid in existing().partnerIds)
+      );
+      allow create: if isValidId(memoryId) && isSignedIn() && isValidNiloraMemory(incoming()) &&
+                       incoming().ownerId == request.auth.uid;
+      allow update: if isValidId(memoryId) && isSignedIn() && isValidNiloraMemory(incoming()) &&
+                       incoming().ownerId == existing().ownerId &&
+                       incoming().createdAt == existing().createdAt && (
+                         isAdmin() ||
+                         existing().ownerId == request.auth.uid ||
+                         (existing().visibility == 'SHARED_WITH_PARTICIPANTS' &&
+                          request.auth.uid in existing().partnerIds &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['translations']))
+                       );
+      allow delete: if isValidId(memoryId) && isSignedIn() && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    // --- NILORA LIVE WORLDS: ADVENTURE SESSIONS, MATCHMAKING & CREWS ---
+
+    match /adventure_sessions/{sessionId} {
+      allow get: if isValidId(sessionId) && isSignedIn() && (
+        isAdmin() ||
+        existing().hostId == request.auth.uid ||
+        request.auth.uid in existing().participantIds ||
+        (!isBlockedBetween(existing().hostId, request.auth.uid) && (
+          (existing().status == 'ACTIVE' && existing().mode == 'JOIN_OTHERS') ||
+          ('crewId' in existing() && existing().crewId != '' && isCrewMember(existing().crewId))
+        ))
+      );
+      allow list: if isSignedIn() && (
+        isAdmin() ||
+        existing().hostId == request.auth.uid ||
+        request.auth.uid in existing().participantIds ||
+        (existing().status == 'ACTIVE' && existing().mode == 'JOIN_OTHERS')
+      );
+      allow create: if isValidId(sessionId) && isSignedIn() && isValidLiveAdventureSession(incoming()) &&
+                       incoming().hostId == request.auth.uid &&
+                       incoming().participantIds.size() == 1 &&
+                       request.auth.uid in incoming().participantIds &&
+                       incoming().status == 'ACTIVE';
+      allow update: if isValidId(sessionId) && isSignedIn() && isValidLiveAdventureSession(incoming()) &&
+                       incoming().hostId == existing().hostId &&
+                       incoming().createdAt == existing().createdAt && (
+                         isAdmin() ||
+                         existing().hostId == request.auth.uid ||
+                         // Join open or crew session (adding only self)
+                         (existing().status == 'ACTIVE' &&
+                          !isBlockedBetween(existing().hostId, request.auth.uid) &&
+                          (existing().mode == 'JOIN_OTHERS' || ('crewId' in existing() && existing().crewId != '' && isCrewMember(existing().crewId))) &&
+                          !(request.auth.uid in existing().participantIds) &&
+                          request.auth.uid in incoming().participantIds &&
+                          incoming().participantIds.hasAll(existing().participantIds) &&
+                          incoming().participantIds.size() == existing().participantIds.size() + 1 &&
+                          incoming().participantIds.size() <= existing().maxParticipants &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['participantIds', 'participantNames', 'participantCountries', 'participantLanguages', 'updatedAt'])) ||
+                         // Leave session (non-host removing only self)
+                         (request.auth.uid in existing().participantIds &&
+                          request.auth.uid != existing().hostId &&
+                          !(request.auth.uid in incoming().participantIds) &&
+                          existing().participantIds.hasAll(incoming().participantIds) &&
+                          incoming().participantIds.size() == existing().participantIds.size() - 1 &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['participantIds', 'participantNames', 'participantCountries', 'participantLanguages', 'updatedAt']))
+                       );
+      allow delete: if isValidId(sessionId) && isSignedIn() && (existing().hostId == request.auth.uid || isAdmin());
+
+      match /participants/{participantId} {
+        allow get, list: if isSignedIn() && exists(/databases/$(database)/documents/adventure_sessions/$(sessionId)) && (
+          isAdmin() ||
+          request.auth.uid in get(/databases/$(database)/documents/adventure_sessions/$(sessionId)).data.participantIds ||
+          get(/databases/$(database)/documents/adventure_sessions/$(sessionId)).data.mode == 'JOIN_OTHERS'
+        );
+        allow create, update: if isValidId(participantId) && isOwner(participantId) && isValidSessionParticipantPresence(incoming()) &&
+                                 incoming().sessionId == sessionId &&
+                                 incoming().userId == request.auth.uid &&
+                                 exists(/databases/$(database)/documents/adventure_sessions/$(sessionId)) &&
+                                 request.auth.uid in get(/databases/$(database)/documents/adventure_sessions/$(sessionId)).data.participantIds;
+        allow delete: if isValidId(participantId) && isSignedIn() && (
+          isOwner(participantId) ||
+          isAdmin() ||
+          (exists(/databases/$(database)/documents/adventure_sessions/$(sessionId)) &&
+           get(/databases/$(database)/documents/adventure_sessions/$(sessionId)).data.hostId == request.auth.uid)
+        );
+      }
+
+      match /messages/{messageId} {
+        allow get, list: if isSignedIn() && exists(/databases/$(database)/documents/adventure_sessions/$(sessionId)) && (
+          isAdmin() ||
+          request.auth.uid in get(/databases/$(database)/documents/adventure_sessions/$(sessionId)).data.participantIds ||
+          get(/databases/$(database)/documents/adventure_sessions/$(sessionId)).data.mode == 'JOIN_OTHERS'
+        );
+        allow create: if isValidId(messageId) && isSignedIn() && isValidSessionChatMessage(incoming()) &&
+                         incoming().sessionId == sessionId &&
+                         incoming().senderId == request.auth.uid &&
+                         exists(/databases/$(database)/documents/adventure_sessions/$(sessionId)) &&
+                         request.auth.uid in get(/databases/$(database)/documents/adventure_sessions/$(sessionId)).data.participantIds;
+        allow update: if isValidId(messageId) && isSignedIn() && isValidSessionChatMessage(incoming()) &&
+                         incoming().sessionId == existing().sessionId &&
+                         incoming().senderId == existing().senderId &&
+                         incoming().originalText == existing().originalText &&
+                         incoming().createdAt == existing().createdAt &&
+                         request.auth.uid in get(/databases/$(database)/documents/adventure_sessions/$(sessionId)).data.participantIds &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['translations', 'translationNote']);
+        allow delete: if isValidId(messageId) && isSignedIn() && (
+          isAdmin() ||
+          existing().senderId == request.auth.uid ||
+          (exists(/databases/$(database)/documents/adventure_sessions/$(sessionId)) &&
+           get(/databases/$(database)/documents/adventure_sessions/$(sessionId)).data.hostId == request.auth.uid)
+        );
+      }
+    }
+
+    match /adventure_match_profiles/{userId} {
+      allow get: if isValidId(userId) && isSignedIn() && (
+        isOwner(userId) ||
+        isAdmin() ||
+        (!isBlockedBetween(userId, request.auth.uid) && existing().isAvailable == true)
+      );
+      allow list: if isSignedIn() && (
+        isOwner(userId) ||
+        isAdmin() ||
+        existing().isAvailable == true
+      );
+      allow create, update: if isValidId(userId) && isOwner(userId) && isValidAdventureMatchProfile(incoming()) &&
+                               incoming().userId == request.auth.uid;
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+    }
+
+    match /nilora_crews/{crewId} {
+      allow get: if isValidId(crewId) && isSignedIn() && (
+        isAdmin() ||
+        existing().leaderId == request.auth.uid ||
+        request.auth.uid in existing().memberIds ||
+        (!isBlockedBetween(existing().leaderId, request.auth.uid) && existing().joinPolicy == 'OPEN')
+      );
+      allow list: if isSignedIn() && (
+        isAdmin() ||
+        existing().leaderId == request.auth.uid ||
+        request.auth.uid in existing().memberIds ||
+        existing().joinPolicy == 'OPEN'
+      );
+      allow create: if isValidId(crewId) && isSignedIn() && isValidNiloraCrew(incoming()) &&
+                       incoming().leaderId == request.auth.uid &&
+                       request.auth.uid in incoming().memberIds;
+      allow update: if isValidId(crewId) && isSignedIn() && isValidNiloraCrew(incoming()) &&
+                       incoming().leaderId == existing().leaderId &&
+                       incoming().createdAt == existing().createdAt && (
+                         isAdmin() ||
+                         existing().leaderId == request.auth.uid ||
+                         // Existing crew member updating adventure history or planned trips or leaving
+                         (request.auth.uid in existing().memberIds && (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['plannedAdventureIds', 'adventureHistoryTitles', 'updatedAt']) ||
+                           (request.auth.uid != existing().leaderId &&
+                            !(request.auth.uid in incoming().memberIds) &&
+                            existing().memberIds.hasAll(incoming().memberIds) &&
+                            incoming().memberIds.size() == existing().memberIds.size() - 1 &&
+                            incoming().diff(existing()).affectedKeys().hasOnly(['memberIds', 'memberNames', 'memberCountries', 'updatedAt']))
+                         )) ||
+                         // Join OPEN crew (adding only self)
+                         (existing().joinPolicy == 'OPEN' &&
+                          !isBlockedBetween(existing().leaderId, request.auth.uid) &&
+                          !(request.auth.uid in existing().memberIds) &&
+                          request.auth.uid in incoming().memberIds &&
+                          incoming().memberIds.hasAll(existing().memberIds) &&
+                          incoming().memberIds.size() == existing().memberIds.size() + 1 &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['memberIds', 'memberNames', 'memberCountries', 'updatedAt']))
+                       );
+      allow delete: if isValidId(crewId) && isSignedIn() && (existing().leaderId == request.auth.uid || isAdmin());
+
+      match /messages/{messageId} {
+        allow get, list: if isSignedIn() && (isAdmin() || isCrewMember(crewId));
+        allow create: if isValidId(messageId) && isSignedIn() && isCrewMember(crewId) &&
+                         isValidCrewMessage(incoming()) &&
+                         incoming().crewId == crewId &&
+                         incoming().senderId == request.auth.uid;
+        allow update: if isValidId(messageId) && isSignedIn() && isCrewMember(crewId) &&
+                         isValidCrewMessage(incoming()) &&
+                         incoming().crewId == existing().crewId &&
+                         incoming().senderId == existing().senderId &&
+                         incoming().originalText == existing().originalText &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['translations']);
+        allow delete: if isValidId(messageId) && isSignedIn() && (isAdmin() || existing().senderId == request.auth.uid);
+      }
+    }
+
+    // --- PHASE 2 REALITY CONNECTED UNIVERSE COLLECTIONS ---
+
+    match /reality_events/{eventId} {
+      allow get: if isValidId(eventId) && isSignedIn() && (
+        isAdmin() ||
+        existing().creatorId == request.auth.uid ||
+        !isBlockedBetween(existing().creatorId, request.auth.uid)
+      );
+      allow list: if isSignedIn();
+      allow create: if isValidId(eventId) && isSignedIn() && isValidRealityEvent(incoming()) &&
+                       incoming().creatorId == request.auth.uid &&
+                       incoming().participantIds.size() == 1 &&
+                       request.auth.uid in incoming().participantIds &&
+                       incoming().pendingRequestIds.size() == 0 &&
+                       (isAdmin() || incoming().verificationTier == 'UNVERIFIED_USER_SUBMITTED');
+      allow update: if isValidId(eventId) && isSignedIn() && isValidRealityEvent(incoming()) &&
+                       incoming().creatorId == existing().creatorId &&
+                       incoming().createdAt == existing().createdAt && (
+                         isAdmin() ||
+                         (existing().creatorId == request.auth.uid &&
+                          incoming().verificationTier == existing().verificationTier) ||
+                         // Join OPEN event or submit join request for REQUEST_APPROVAL event
+                         (!isBlockedBetween(existing().creatorId, request.auth.uid) &&
+                          existing().status in ['UPCOMING', 'ACTIVE'] && (
+                            (existing().joinPolicy == 'OPEN' &&
+                             !(request.auth.uid in existing().participantIds) &&
+                             request.auth.uid in incoming().participantIds &&
+                             incoming().participantIds.hasAll(existing().participantIds) &&
+                             incoming().participantIds.size() == existing().participantIds.size() + 1 &&
+                             incoming().participantIds.size() <= existing().maxParticipants &&
+                             incoming().diff(existing()).affectedKeys().hasOnly(['participantIds', 'participantNames', 'updatedAt'])) ||
+                            (existing().joinPolicy == 'REQUEST_APPROVAL' &&
+                             !(request.auth.uid in existing().pendingRequestIds) &&
+                             request.auth.uid in incoming().pendingRequestIds &&
+                             incoming().pendingRequestIds.hasAll(existing().pendingRequestIds) &&
+                             incoming().pendingRequestIds.size() == existing().pendingRequestIds.size() + 1 &&
+                             incoming().diff(existing()).affectedKeys().hasOnly(['pendingRequestIds', 'updatedAt'])) ||
+                            (request.auth.uid in existing().participantIds &&
+                             request.auth.uid != existing().creatorId &&
+                             !(request.auth.uid in incoming().participantIds) &&
+                             existing().participantIds.hasAll(incoming().participantIds) &&
+                             incoming().participantIds.size() == existing().participantIds.size() - 1 &&
+                             incoming().diff(existing()).affectedKeys().hasOnly(['participantIds', 'participantNames', 'updatedAt']))
+                          ))
+                       );
+      allow delete: if isValidId(eventId) && isSignedIn() && (existing().creatorId == request.auth.uid || isAdmin());
+
+      match /messages/{messageId} {
+        allow get, list: if isSignedIn() && (isAdmin() || isEventParticipant(eventId));
+        allow create: if isValidId(messageId) && isSignedIn() && isEventParticipant(eventId) &&
+                         isValidRealityEventMessage(incoming()) &&
+                         incoming().eventId == eventId &&
+                         incoming().senderId == request.auth.uid;
+        allow update: if isValidId(messageId) && isSignedIn() && isEventParticipant(eventId) &&
+                         isValidRealityEventMessage(incoming()) &&
+                         incoming().eventId == existing().eventId &&
+                         incoming().senderId == existing().senderId &&
+                         incoming().originalText == existing().originalText &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['translations']);
+        allow delete: if isValidId(messageId) && isSignedIn() && (
+          isAdmin() ||
+          existing().senderId == request.auth.uid ||
+          get(/databases/$(database)/documents/reality_events/$(eventId)).data.creatorId == request.auth.uid
+        );
+      }
+    }
+
+    match /reality_activities/{activityId} {
+      allow get: if isValidId(activityId) && isSignedIn() && (
+        isAdmin() ||
+        existing().creatorId == request.auth.uid ||
+        request.auth.uid in existing().participantIds ||
+        (!isBlockedBetween(existing().creatorId, request.auth.uid) && (
+          existing().joinPolicy in ['PUBLIC', 'REQUEST_APPROVAL'] ||
+          request.auth.uid in existing().invitedUserIds
+        ))
+      );
+      allow list: if isSignedIn() && (
+        isAdmin() ||
+        existing().creatorId == request.auth.uid ||
+        request.auth.uid in existing().participantIds ||
+        existing().joinPolicy in ['PUBLIC', 'REQUEST_APPROVAL']
+      );
+      allow create: if isValidId(activityId) && isSignedIn() && isValidTeamActivityPost(incoming()) &&
+                       incoming().creatorId == request.auth.uid &&
+                       incoming().participantIds.size() == 1 &&
+                       request.auth.uid in incoming().participantIds &&
+                       incoming().pendingRequestIds.size() == 0 &&
+                       (isAdmin() || incoming().impactVerifiedByAdmin == false);
+      allow update: if isValidId(activityId) && isSignedIn() && isValidTeamActivityPost(incoming()) &&
+                       incoming().creatorId == existing().creatorId &&
+                       incoming().createdAt == existing().createdAt && (
+                         isAdmin() ||
+                         (existing().creatorId == request.auth.uid &&
+                          incoming().impactVerifiedByAdmin == existing().impactVerifiedByAdmin) ||
+                         (!isBlockedBetween(existing().creatorId, request.auth.uid) && (
+                           // Join PUBLIC or INVITE_ONLY (when invited)
+                           ((existing().joinPolicy == 'PUBLIC' ||
+                             (existing().joinPolicy == 'INVITE_ONLY' && request.auth.uid in existing().invitedUserIds)) &&
+                            existing().teamStatus in ['LOOKING_FOR_PARTICIPANTS', 'GROUP_FORMING'] &&
+                            !(request.auth.uid in existing().participantIds) &&
+                            request.auth.uid in incoming().participantIds &&
+                            incoming().participantIds.hasAll(existing().participantIds) &&
+                            incoming().participantIds.size() == existing().participantIds.size() + 1 &&
+                            incoming().participantIds.size() <= existing().maxParticipants &&
+                            incoming().diff(existing()).affectedKeys().hasOnly(['participantIds', 'participantNames', 'teamStatus', 'updatedAt'])) ||
+                           // Submit request for REQUEST_APPROVAL
+                           (existing().joinPolicy == 'REQUEST_APPROVAL' &&
+                            existing().teamStatus in ['LOOKING_FOR_PARTICIPANTS', 'GROUP_FORMING'] &&
+                            !(request.auth.uid in existing().participantIds) &&
+                            !(request.auth.uid in existing().pendingRequestIds) &&
+                            request.auth.uid in incoming().pendingRequestIds &&
+                            incoming().pendingRequestIds.hasAll(existing().pendingRequestIds) &&
+                            incoming().pendingRequestIds.size() == existing().pendingRequestIds.size() + 1 &&
+                            incoming().diff(existing()).affectedKeys().hasOnly(['pendingRequestIds', 'updatedAt'])) ||
+                           // Leave group
+                           (request.auth.uid in existing().participantIds &&
+                            request.auth.uid != existing().creatorId &&
+                            !(request.auth.uid in incoming().participantIds) &&
+                            existing().participantIds.hasAll(incoming().participantIds) &&
+                            incoming().participantIds.size() == existing().participantIds.size() - 1 &&
+                            incoming().diff(existing()).affectedKeys().hasOnly(['participantIds', 'participantNames', 'teamStatus', 'updatedAt']))
+                         ))
+                       );
+      allow delete: if isValidId(activityId) && isSignedIn() && (existing().creatorId == request.auth.uid || isAdmin());
+
+      match /messages/{messageId} {
+        allow get, list: if isSignedIn() && (isAdmin() || isActivityParticipant(activityId));
+        allow create: if isValidId(messageId) && isSignedIn() && isActivityParticipant(activityId) &&
+                         isValidActivityGroupMessage(incoming()) &&
+                         incoming().activityId == activityId &&
+                         incoming().senderId == request.auth.uid;
+        allow update: if isValidId(messageId) && isSignedIn() && isActivityParticipant(activityId) &&
+                         isValidActivityGroupMessage(incoming()) &&
+                         incoming().activityId == existing().activityId &&
+                         incoming().senderId == existing().senderId &&
+                         incoming().originalText == existing().originalText &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['translations']);
+        allow delete: if isValidId(messageId) && isSignedIn() && (
+          isAdmin() ||
+          existing().senderId == request.auth.uid ||
+          get(/databases/$(database)/documents/reality_activities/$(activityId)).data.creatorId == request.auth.uid
+        );
+      }
+    }
+
+    match /reality_missions/{missionId} {
+      allow get: if isValidId(missionId) && isSignedIn() && (
+        isAdmin() ||
+        existing().creatorId == request.auth.uid ||
+        !isBlockedBetween(existing().creatorId, request.auth.uid)
+      );
+      allow list: if isSignedIn();
+      allow create: if isValidId(missionId) && isSignedIn() && isValidRealityMission(incoming()) &&
+                       incoming().creatorId == request.auth.uid &&
+                       incoming().participantIds.size() == 1 &&
+                       request.auth.uid in incoming().participantIds &&
+                       incoming().submissionsCount == 0 &&
+                       incoming().status == 'ACTIVE';
+      allow update: if isValidId(missionId) && isSignedIn() && isValidRealityMission(incoming()) &&
+                       incoming().creatorId == existing().creatorId &&
+                       incoming().executionMode == existing().executionMode &&
+                       incoming().targetSteps == existing().targetSteps &&
+                       incoming().createdAt == existing().createdAt && (
+                         isAdmin() ||
+                         existing().creatorId == request.auth.uid ||
+                         (!isBlockedBetween(existing().creatorId, request.auth.uid) &&
+                          incoming().participantIds.hasAll(existing().participantIds) &&
+                          request.auth.uid in incoming().participantIds &&
+                          incoming().submissionsCount >= existing().submissionsCount &&
+                          incoming().submissionsCount <= existing().submissionsCount + 1 &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['participantIds', 'submissionsCount', 'status', 'updatedAt']))
+                       );
+      allow delete: if isValidId(missionId) && isSignedIn() && (existing().creatorId == request.auth.uid || isAdmin());
+
+      match /submissions/{submissionId} {
+        allow get, list: if isSignedIn() && exists(/databases/$(database)/documents/reality_missions/$(missionId)) && (
+          isAdmin() ||
+          !isBlockedBetween(get(/databases/$(database)/documents/reality_missions/$(missionId)).data.creatorId, request.auth.uid)
+        );
+        allow create: if isValidId(submissionId) && isSignedIn() && isValidMissionSubmission(incoming()) &&
+                         incoming().missionId == missionId &&
+                         incoming().authorId == request.auth.uid &&
+                         exists(/databases/$(database)/documents/reality_missions/$(missionId)) &&
+                         !isBlockedBetween(get(/databases/$(database)/documents/reality_missions/$(missionId)).data.creatorId, request.auth.uid) &&
+                         // Virtual missions can NEVER record a REAL_WORLD_LOG
+                         (get(/databases/$(database)/documents/reality_missions/$(missionId)).data.executionMode == 'REAL_WORLD' ||
+                          incoming().submissionMode == 'VIRTUAL_PROGRESS');
+        allow update: if false;
+        allow delete: if isValidId(submissionId) && isSignedIn() && (
+          isAdmin() ||
+          existing().authorId == request.auth.uid ||
+          get(/databases/$(database)/documents/reality_missions/$(missionId)).data.creatorId == request.auth.uid
+        );
+      }
+    }
+
+    match /global_challenges/{challengeId} {
+      allow get: if isValidId(challengeId) && isSignedIn() && (
+        isAdmin() ||
+        existing().creatorId == request.auth.uid ||
+        !isBlockedBetween(existing().creatorId, request.auth.uid)
+      );
+      allow list: if isSignedIn();
+      allow create: if isValidId(challengeId) && isSignedIn() && isValidGlobalChallenge(incoming()) &&
+                       incoming().creatorId == request.auth.uid &&
+                       incoming().participantIds.size() == 1 &&
+                       request.auth.uid in incoming().participantIds &&
+                       incoming().entriesCount == 0 &&
+                       incoming().status == 'ACTIVE';
+      allow update: if isValidId(challengeId) && isSignedIn() && isValidGlobalChallenge(incoming()) &&
+                       incoming().creatorId == existing().creatorId &&
+                       incoming().targetGoal == existing().targetGoal &&
+                       incoming().createdAt == existing().createdAt && (
+                         isAdmin() ||
+                         existing().creatorId == request.auth.uid ||
+                         (!isBlockedBetween(existing().creatorId, request.auth.uid) &&
+                          incoming().participantIds.hasAll(existing().participantIds) &&
+                          request.auth.uid in incoming().participantIds &&
+                          incoming().entriesCount >= existing().entriesCount &&
+                          incoming().entriesCount <= existing().entriesCount + 1 &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['participantIds', 'participantCountries', 'entriesCount', 'status', 'updatedAt']))
+                       );
+      allow delete: if isValidId(challengeId) && isSignedIn() && (existing().creatorId == request.auth.uid || isAdmin());
+
+      match /entries/{entryId} {
+        allow get, list: if isSignedIn() && exists(/databases/$(database)/documents/global_challenges/$(challengeId)) && (
+          isAdmin() ||
+          !isBlockedBetween(get(/databases/$(database)/documents/global_challenges/$(challengeId)).data.creatorId, request.auth.uid)
+        );
+        allow create: if isValidId(entryId) && isSignedIn() && isValidChallengeEntry(incoming()) &&
+                         incoming().challengeId == challengeId &&
+                         incoming().authorId == request.auth.uid &&
+                         (isAdmin() || incoming().verificationLabel == 'USER_SUBMITTED') &&
+                         exists(/databases/$(database)/documents/global_challenges/$(challengeId)) &&
+                         !isBlockedBetween(get(/databases/$(database)/documents/global_challenges/$(challengeId)).data.creatorId, request.auth.uid);
+        allow update: if isValidId(entryId) && isAdmin() && isValidChallengeEntry(incoming()) &&
+                         incoming().challengeId == existing().challengeId &&
+                         incoming().authorId == existing().authorId &&
+                         incoming().createdAt == existing().createdAt;
+        allow delete: if isValidId(entryId) && isSignedIn() && (isAdmin() || existing().authorId == request.auth.uid);
+      }
+    }
+  }
+}

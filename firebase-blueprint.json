@@ -1,0 +1,1162 @@
+{
+  "entities": {
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized administrator record for server-side RBAC verification.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the administrator" },
+        "email": { "type": "string", "description": "Verified administrator email" },
+        "roleLevel": { "type": "string", "enum": ["SUPER_ADMIN", "MODERATOR", "VERIFIER"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "roleLevel", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Owner/Admin private settings & global communication profile.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "accountMode": { "type": "string", "enum": ["TRAVELER", "LOCAL_PROVIDER", "GLOBAL_MEMBER"] },
+        "preferredLanguage": { "type": "string", "enum": ["en", "ar", "fr", "ru"] },
+        "nativeLanguage": { "type": "string" },
+        "spokenLanguages": { "type": "array" },
+        "learningLanguages": { "type": "array" },
+        "interests": { "type": "array" },
+        "country": { "type": "string" },
+        "city": { "type": "string" },
+        "photoUri": { "type": "string" },
+        "bio": { "type": "string" },
+        "profileVisibility": { "type": "string", "enum": ["PUBLIC", "CONNECTIONS_ONLY", "PRIVATE"] },
+        "openToLanguageExchange": { "type": "boolean" },
+        "privacyConsent": { "type": "boolean" },
+        "retainTranslationHistory": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "displayName", "accountMode", "preferredLanguage", "country", "privacyConsent", "createdAt", "updatedAt"]
+    },
+    "PublicProfile": {
+      "title": "PublicProfile",
+      "description": "Voluntarily discoverable global community profile (never contains phone, email, or GPS coordinates).",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "country": { "type": "string" },
+        "city": { "type": "string" },
+        "nativeLanguage": { "type": "string" },
+        "spokenLanguages": { "type": "array" },
+        "learningLanguages": { "type": "array" },
+        "interests": { "type": "array" },
+        "photoUri": { "type": "string" },
+        "bio": { "type": "string" },
+        "profileVisibility": { "type": "string", "enum": ["PUBLIC", "CONNECTIONS_ONLY", "PRIVATE"] },
+        "openToLanguageExchange": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "displayName", "country", "nativeLanguage", "profileVisibility", "openToLanguageExchange", "createdAt", "updatedAt"]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Isolated PII document accessible only to the owner and admins.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "phoneCountryCode": { "type": "string" },
+        "phone": { "type": "string" },
+        "emergencyContact": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "updatedAt"]
+    },
+    "BlockedUser": {
+      "title": "BlockedUser",
+      "description": "Owner-managed blocklist record preventing DMs and connection requests.",
+      "type": "object",
+      "properties": {
+        "blockerId": { "type": "string" },
+        "blockedUserId": { "type": "string" },
+        "blockedUserName": { "type": "string" },
+        "reason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["blockerId", "blockedUserId", "createdAt"]
+    },
+    "ConnectionRequest": {
+      "title": "ConnectionRequest",
+      "description": "Global community / language-exchange connection request between two users.",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderCountry": { "type": "string" },
+        "senderNativeLanguage": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "receiverName": { "type": "string" },
+        "receiverCountry": { "type": "string" },
+        "receiverNativeLanguage": { "type": "string" },
+        "memberUids": { "type": "array" },
+        "introMessage": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "ACCEPTED", "DECLINED", "CANCELLED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "senderName", "receiverId", "receiverName", "memberUids", "status", "createdAt", "updatedAt"]
+    },
+    "DirectConversation": {
+      "title": "DirectConversation",
+      "description": "One-to-one multilingual conversation between two users.",
+      "type": "object",
+      "properties": {
+        "participantIds": { "type": "array" },
+        "participantNames": { "type": "object" },
+        "participantLanguages": { "type": "object" },
+        "lastMessagePreview": { "type": "string" },
+        "lastMessageSenderId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["participantIds", "participantNames", "createdAt", "updatedAt"]
+    },
+    "DirectMessage": {
+      "title": "DirectMessage",
+      "description": "One-to-one message preserving original text alongside optional translations and voice audio.",
+      "type": "object",
+      "properties": {
+        "conversationId": { "type": "string" },
+        "participantIds": { "type": "array" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "messageType": { "type": "string", "enum": ["TEXT", "VOICE_NOTE"] },
+        "originalText": { "type": "string" },
+        "sourceLanguage": { "type": "string" },
+        "translations": { "type": "object" },
+        "translationConfidence": { "type": "string" },
+        "translationNote": { "type": "string" },
+        "audioBase64": { "type": "string" },
+        "audioDurationMs": { "type": "integer" },
+        "audioMimeType": { "type": "string" },
+        "deliveryStatus": { "type": "string", "enum": ["SENT", "DELIVERED", "READ"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["conversationId", "participantIds", "senderId", "senderName", "messageType", "originalText", "sourceLanguage", "deliveryStatus", "createdAt"]
+    },
+    "GroupRoom": {
+      "title": "GroupRoom",
+      "description": "Multilingual community group room with owner/moderator controls.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "moderatorIds": { "type": "array" },
+        "memberIds": { "type": "array" },
+        "bannedIds": { "type": "array" },
+        "primaryLanguages": { "type": "array" },
+        "joinPolicy": { "type": "string", "enum": ["OPEN", "REQUEST_APPROVAL", "INVITE_ONLY"] },
+        "autoTranslateDefault": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "ownerId", "moderatorIds", "memberIds", "bannedIds", "joinPolicy", "autoTranslateDefault", "createdAt", "updatedAt"]
+    },
+    "GroupJoinRequest": {
+      "title": "GroupJoinRequest",
+      "description": "Membership join request or owner/moderator invitation for a multilingual group.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userCountry": { "type": "string" },
+        "nativeLanguage": { "type": "string" },
+        "message": { "type": "string" },
+        "requestType": { "type": "string", "enum": ["JOIN_REQUEST", "INVITE"] },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "DECLINED"] },
+        "invitedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["groupId", "userId", "userName", "requestType", "status", "createdAt", "updatedAt"]
+    },
+    "GroupMessage": {
+      "title": "GroupMessage",
+      "description": "Message in a multilingual group preserving original text and per-language translations.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "originalText": { "type": "string" },
+        "sourceLanguage": { "type": "string" },
+        "translations": { "type": "object" },
+        "translationNote": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["groupId", "senderId", "senderName", "originalText", "sourceLanguage", "createdAt"]
+    },
+    "FavoriteItem": {
+      "title": "FavoriteItem",
+      "description": "Saved destination or activity in My Journey.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "targetId": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["DESTINATION", "ACTIVITY", "PROVIDER"] },
+        "title": { "type": "string" },
+        "cityName": { "type": "string" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "targetId", "targetType", "title", "createdAt"]
+    },
+    "TravelNote": {
+      "title": "TravelNote",
+      "description": "Personal itinerary note in My Journey.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "cityName": { "type": "string" },
+        "tripDate": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "content", "createdAt", "updatedAt"]
+    },
+    "AppNotification": {
+      "title": "AppNotification",
+      "description": "User-scoped notification record.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "category": { "type": "string", "enum": ["BOOKING", "VERIFICATION", "SYSTEM", "TRANSLATION", "COMMUNITY", "GROUP", "EXPERIENCE", "ADVENTURE", "REALITY"] },
+        "readStatus": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "category", "readStatus", "createdAt"]
+    },
+    "Country": {
+      "title": "Country",
+      "description": "Supported country taxonomy entry.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "name": { "type": "string" },
+        "nativeName": { "type": "string" },
+        "defaultCurrency": { "type": "string" },
+        "supportedLanguages": { "type": "array" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "name", "defaultCurrency", "active", "createdAt", "updatedAt"]
+    },
+    "City": {
+      "title": "City",
+      "description": "Supported city or destination region taxonomy entry.",
+      "type": "object",
+      "properties": {
+        "countryCode": { "type": "string" },
+        "name": { "type": "string" },
+        "arabicName": { "type": "string" },
+        "region": { "type": "string" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["countryCode", "name", "active", "createdAt", "updatedAt"]
+    },
+    "Destination": {
+      "title": "Destination",
+      "description": "Admin-verified or official-source tourism destination, beach, hotel, restaurant, or attraction.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "countryCode": { "type": "string" },
+        "cityName": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "verifiedCoordinates": { "type": "boolean" },
+        "facilities": { "type": "array" },
+        "operatingHours": { "type": "string" },
+        "priceInfo": { "type": "string" },
+        "safetyWarnings": { "type": "string" },
+        "accessibilityInfo": { "type": "string" },
+        "officialWebsite": { "type": "string" },
+        "contactInfo": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "sourceName": { "type": "string" },
+        "sourceUrl": { "type": "string" },
+        "lastVerifiedAt": { "type": "string" },
+        "verificationStatus": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "submittedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "countryCode", "cityName", "category", "description", "verifiedCoordinates", "sourceName", "verificationStatus", "submittedBy", "createdAt", "updatedAt"]
+    },
+    "ActivityListing": {
+      "title": "ActivityListing",
+      "description": "Verified provider trip, excursion, or local experience.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "providerId": { "type": "string" },
+        "providerName": { "type": "string" },
+        "countryCode": { "type": "string" },
+        "cityName": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "durationLabel": { "type": "string" },
+        "priceAmount": { "type": "number" },
+        "currency": { "type": "string" },
+        "priceOnRequest": { "type": "boolean" },
+        "availabilityStatus": { "type": "string", "enum": ["AVAILABLE", "ON_REQUEST", "UNAVAILABLE"] },
+        "includedServices": { "type": "array" },
+        "exclusions": { "type": "array" },
+        "cancellationPolicy": { "type": "string" },
+        "safetyRequirements": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "verifiedCoordinates": { "type": "boolean" },
+        "sourceName": { "type": "string" },
+        "verificationStatus": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "providerId", "providerName", "countryCode", "cityName", "category", "description", "durationLabel", "priceOnRequest", "availabilityStatus", "cancellationPolicy", "verifiedCoordinates", "sourceName", "verificationStatus", "createdAt", "updatedAt"]
+    },
+    "ProviderProfile": {
+      "title": "ProviderProfile",
+      "description": "Local Connect professional profile and credential verification workflow.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "serviceType": { "type": "string", "enum": ["TOUR_GUIDE", "TRANSLATOR", "TRAVEL_ASSISTANT", "TOUR_OPERATOR", "HOSPITALITY"] },
+        "languages": { "type": "array" },
+        "citiesCovered": { "type": "array" },
+        "bio": { "type": "string" },
+        "licenseNumber": { "type": "string" },
+        "documentSummary": { "type": "string" },
+        "documentRefUri": { "type": "string" },
+        "verificationStatus": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "reviewedBy": { "type": "string" },
+        "rejectionReason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "fullName", "serviceType", "languages", "citiesCovered", "bio", "documentSummary", "verificationStatus", "createdAt", "updatedAt"]
+    },
+    "BookingRecord": {
+      "title": "BookingRecord",
+      "description": "Booking request and lifecycle state between traveler and verified provider.",
+      "type": "object",
+      "properties": {
+        "bookingReference": { "type": "string" },
+        "travelerId": { "type": "string" },
+        "travelerName": { "type": "string" },
+        "providerId": { "type": "string" },
+        "providerName": { "type": "string" },
+        "activityId": { "type": "string" },
+        "activityTitle": { "type": "string" },
+        "requestedDate": { "type": "string" },
+        "participantsCount": { "type": "integer" },
+        "notes": { "type": "string" },
+        "status": { "type": "string", "enum": ["REQUEST_SUBMITTED", "AWAITING_PROVIDER_CONFIRMATION", "CONFIRMED", "REJECTED", "CANCELLED"] },
+        "cancellationReason": { "type": "string" },
+        "paymentStatus": { "type": "string", "enum": ["NOT_CONFIGURED", "PENDING", "PAID", "REFUNDED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["bookingReference", "travelerId", "travelerName", "providerId", "providerName", "activityId", "activityTitle", "requestedDate", "participantsCount", "status", "paymentStatus", "createdAt", "updatedAt"]
+    },
+    "ConversationRoom": {
+      "title": "ConversationRoom",
+      "description": "Two-phone real-time voice translation room (NILORA LIVE).",
+      "type": "object",
+      "properties": {
+        "roomCode": { "type": "string" },
+        "hostId": { "type": "string" },
+        "hostName": { "type": "string" },
+        "hostLanguage": { "type": "string", "enum": ["en", "ar", "fr", "ru"] },
+        "guestId": { "type": "string" },
+        "guestName": { "type": "string" },
+        "guestLanguage": { "type": "string", "enum": ["en", "ar", "fr", "ru"] },
+        "memberUids": { "type": "array" },
+        "status": { "type": "string", "enum": ["WAITING", "ACTIVE", "ENDED"] },
+        "retainTranscript": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["roomCode", "hostId", "hostName", "hostLanguage", "memberUids", "status", "retainTranscript", "createdAt", "updatedAt"]
+    },
+    "ConversationMessage": {
+      "title": "ConversationMessage",
+      "description": "Translated utterance inside a real-time conversation room.",
+      "type": "object",
+      "properties": {
+        "roomCode": { "type": "string" },
+        "memberUids": { "type": "array" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "sourceLanguage": { "type": "string" },
+        "targetLanguage": { "type": "string" },
+        "originalText": { "type": "string" },
+        "translatedText": { "type": "string" },
+        "confidenceNote": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["roomCode", "memberUids", "senderId", "senderName", "sourceLanguage", "targetLanguage", "originalText", "translatedText", "createdAt"]
+    },
+    "ContentReport": {
+      "title": "ContentReport",
+      "description": "Safety or data integrity report submitted by a user.",
+      "type": "object",
+      "properties": {
+        "reporterId": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["PROVIDER", "DESTINATION", "ACTIVITY", "ROOM", "USER", "MESSAGE", "GROUP", "GROUP_MESSAGE", "POSTCARD", "POSTCARD_CONTRIBUTION", "CULTURE_SWAP", "WORLD_QUEST", "MEMORY", "ADVENTURE_SESSION", "CREW", "REALITY_EVENT", "REALITY_ACTIVITY", "REALITY_MISSION", "GLOBAL_CHALLENGE"] },
+        "targetId": { "type": "string" },
+        "reason": { "type": "string" },
+        "details": { "type": "string" },
+        "status": { "type": "string", "enum": ["OPEN", "REVIEWED", "RESOLVED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reporterId", "targetType", "targetId", "reason", "status", "createdAt", "updatedAt"]
+    },
+    "DataSourceRecord": {
+      "title": "DataSourceRecord",
+      "description": "Official external or verified administrative data source registry.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "providerType": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "AWAITING_CREDENTIALS", "UNAVAILABLE"] },
+        "notes": { "type": "string" },
+        "updatedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "providerType", "status", "updatedBy", "createdAt", "updatedAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable admin and security event audit log.",
+      "type": "object",
+      "properties": {
+        "actorId": { "type": "string" },
+        "actorEmail": { "type": "string" },
+        "action": { "type": "string" },
+        "targetCollection": { "type": "string" },
+        "targetId": { "type": "string" },
+        "summary": { "type": "string" },
+        "severity": { "type": "string", "enum": ["INFO", "WARNING", "SECURITY"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["actorId", "action", "targetCollection", "summary", "severity", "createdAt"]
+    },
+    "WorldPostcard": {
+      "title": "WorldPostcard",
+      "description": "Living digital postcard anchoring multi-country human story chains.",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "country": { "type": "string" },
+        "city": { "type": "string" },
+        "languageCode": { "type": "string" },
+        "category": { "type": "string", "enum": ["STORY", "QUESTION", "EXPRESSION", "TRADITION", "FOOD", "EXPERIENCE"] },
+        "title": { "type": "string" },
+        "storyText": { "type": "string" },
+        "localExpression": { "type": "string" },
+        "questionPrompt": { "type": "string" },
+        "photoBase64": { "type": "string" },
+        "audioBase64": { "type": "string" },
+        "audioDurationMs": { "type": "integer" },
+        "translations": { "type": "object" },
+        "translationNote": { "type": "string" },
+        "participantIds": { "type": "array" },
+        "countriesChain": { "type": "array" },
+        "contributionsCount": { "type": "integer" },
+        "allowReplies": { "type": "boolean" },
+        "allowPrivateConnect": { "type": "boolean" },
+        "visibility": { "type": "string", "enum": ["PUBLIC", "PRIVATE"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["authorId", "authorName", "country", "languageCode", "category", "title", "storyText", "participantIds", "countriesChain", "contributionsCount", "allowReplies", "allowPrivateConnect", "visibility", "createdAt", "updatedAt"]
+    },
+    "PostcardContribution": {
+      "title": "PostcardContribution",
+      "description": "A cross-cultural response appended to a World Postcard timeline.",
+      "type": "object",
+      "properties": {
+        "postcardId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "country": { "type": "string" },
+        "city": { "type": "string" },
+        "languageCode": { "type": "string" },
+        "responseText": { "type": "string" },
+        "localExpression": { "type": "string" },
+        "photoBase64": { "type": "string" },
+        "audioBase64": { "type": "string" },
+        "audioDurationMs": { "type": "integer" },
+        "translations": { "type": "object" },
+        "translationNote": { "type": "string" },
+        "allowPrivateConnect": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["postcardId", "authorId", "authorName", "country", "languageCode", "responseText", "allowPrivateConnect", "createdAt"]
+    },
+    "CultureSwap": {
+      "title": "CultureSwap",
+      "description": "Structured bidirectional cultural exchange prompt and participation room.",
+      "type": "object",
+      "properties": {
+        "creatorId": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "creatorCountry": { "type": "string" },
+        "creatorLanguage": { "type": "string" },
+        "promptCategory": { "type": "string", "enum": ["TEACH_PHRASE", "MORNING_ROUTINE", "FOOD_TRADITION", "LOCAL_SECRET", "MUSIC_SONG", "EVERYDAY_TRADITION"] },
+        "promptText": { "type": "string" },
+        "participationMode": { "type": "string", "enum": ["TWO_PERSON", "GROUP"] },
+        "maxParticipants": { "type": "integer" },
+        "participantIds": { "type": "array" },
+        "participantNames": { "type": "object" },
+        "participantCountries": { "type": "object" },
+        "entriesCount": { "type": "integer" },
+        "status": { "type": "string", "enum": ["OPEN", "EXCHANGED", "COMPLETED"] },
+        "allowPrivateConnect": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["creatorId", "creatorName", "creatorCountry", "creatorLanguage", "promptCategory", "promptText", "participationMode", "maxParticipants", "participantIds", "participantNames", "participantCountries", "entriesCount", "status", "allowPrivateConnect", "createdAt", "updatedAt"]
+    },
+    "CultureSwapEntry": {
+      "title": "CultureSwapEntry",
+      "description": "Individual voice/photo/text turn inside a Culture Swap exchange.",
+      "type": "object",
+      "properties": {
+        "swapId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "country": { "type": "string" },
+        "languageCode": { "type": "string" },
+        "contentText": { "type": "string" },
+        "culturalContext": { "type": "string" },
+        "photoBase64": { "type": "string" },
+        "audioBase64": { "type": "string" },
+        "audioDurationMs": { "type": "integer" },
+        "translations": { "type": "object" },
+        "translationNote": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["swapId", "authorId", "authorName", "country", "languageCode", "contentText", "createdAt"]
+    },
+    "WorldQuest": {
+      "title": "WorldQuest",
+      "description": "Collaborative multi-country cultural challenge with verifiable goal progress.",
+      "type": "object",
+      "properties": {
+        "creatorId": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "missionType": { "type": "string", "enum": ["FIVE_SIMILARITIES", "THREE_EXPRESSIONS", "LOCAL_TRADITION", "FOOD_STORY", "EVERYDAY_COMPARE", "CUSTOM"] },
+        "title": { "type": "string" },
+        "objective": { "type": "string" },
+        "targetGoal": { "type": "integer" },
+        "participantIds": { "type": "array" },
+        "participantCountries": { "type": "array" },
+        "contributionsCount": { "type": "integer" },
+        "status": { "type": "string", "enum": ["ACTIVE", "COMPLETED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["creatorId", "creatorName", "missionType", "title", "objective", "targetGoal", "participantIds", "participantCountries", "contributionsCount", "status", "createdAt", "updatedAt"]
+    },
+    "WorldQuestContribution": {
+      "title": "WorldQuestContribution",
+      "description": "Verified participant contribution toward a World Quest objective.",
+      "type": "object",
+      "properties": {
+        "questId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "country": { "type": "string" },
+        "languageCode": { "type": "string" },
+        "contributionTitle": { "type": "string" },
+        "contentText": { "type": "string" },
+        "translations": { "type": "object" },
+        "translationNote": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["questId", "authorId", "authorName", "country", "languageCode", "contributionTitle", "contentText", "createdAt"]
+    },
+    "NiloraMemory": {
+      "title": "NiloraMemory",
+      "description": "Consent-governed personal or shared chronological cultural memory record.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "ownerName": { "type": "string" },
+        "memoryType": { "type": "string", "enum": ["POSTCARD", "CULTURE_SWAP", "WORLD_QUEST", "VOICE_MEMORY", "CONNECTION", "PLACE"] },
+        "sourceId": { "type": "string" },
+        "title": { "type": "string" },
+        "summaryText": { "type": "string" },
+        "originalLanguage": { "type": "string" },
+        "translations": { "type": "object" },
+        "countries": { "type": "array" },
+        "partnerIds": { "type": "array" },
+        "partnerNames": { "type": "array" },
+        "placeLabel": { "type": "string" },
+        "photoBase64": { "type": "string" },
+        "audioBase64": { "type": "string" },
+        "audioDurationMs": { "type": "integer" },
+        "retainAudioConsent": { "type": "boolean" },
+        "visibility": { "type": "string", "enum": ["PRIVATE", "SHARED_WITH_PARTICIPANTS", "PUBLIC"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "ownerName", "memoryType", "title", "summaryText", "originalLanguage", "countries", "partnerIds", "retainAudioConsent", "visibility", "createdAt", "updatedAt"]
+    },
+    "LiveAdventureSession": {
+      "title": "LiveAdventureSession",
+      "description": "Real-time shared or solo virtual adventure session anchored to a real destination.",
+      "type": "object",
+      "properties": {
+        "hostId": { "type": "string" },
+        "hostName": { "type": "string" },
+        "adventureId": { "type": "string" },
+        "adventureTitle": { "type": "string" },
+        "destinationName": { "type": "string" },
+        "mode": { "type": "string", "enum": ["SOLO", "JOIN_OTHERS", "CREW_SESSION"] },
+        "status": { "type": "string", "enum": ["ACTIVE", "ENDED"] },
+        "maxParticipants": { "type": "integer" },
+        "participantIds": { "type": "array" },
+        "participantNames": { "type": "object" },
+        "participantCountries": { "type": "object" },
+        "participantLanguages": { "type": "object" },
+        "voicePreferred": { "type": "boolean" },
+        "experienceLevel": { "type": "string", "enum": ["BEGINNER", "INTERMEDIATE", "EXPLORER"] },
+        "durationMinutes": { "type": "integer" },
+        "availabilitySlot": { "type": "string" },
+        "crewId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["hostId", "hostName", "adventureId", "adventureTitle", "destinationName", "mode", "status", "maxParticipants", "participantIds", "participantNames", "participantCountries", "participantLanguages", "voicePreferred", "experienceLevel", "durationMinutes", "createdAt", "updatedAt"]
+    },
+    "SessionParticipantPresence": {
+      "title": "SessionParticipantPresence",
+      "description": "Real-time 3D position, look angle, language, and pointing beacon inside an adventure session.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string" },
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "country": { "type": "string" },
+        "languageCode": { "type": "string" },
+        "posX": { "type": "number" },
+        "posY": { "type": "number" },
+        "posZ": { "type": "number" },
+        "yawDeg": { "type": "number" },
+        "pointedPoiId": { "type": "string" },
+        "pointedX": { "type": "number" },
+        "pointedY": { "type": "number" },
+        "pointedZ": { "type": "number" },
+        "voiceMuted": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["sessionId", "userId", "displayName", "country", "languageCode", "posX", "posY", "posZ", "yawDeg", "voiceMuted", "updatedAt"]
+    },
+    "SessionChatMessage": {
+      "title": "SessionChatMessage",
+      "description": "Translated voice/text communication inside a Live Adventure session.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "originalText": { "type": "string" },
+        "sourceLanguage": { "type": "string" },
+        "translations": { "type": "object" },
+        "translationNote": { "type": "string" },
+        "discoveryPoiId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["sessionId", "senderId", "senderName", "originalText", "sourceLanguage", "createdAt"]
+    },
+    "AdventureMatchProfile": {
+      "title": "AdventureMatchProfile",
+      "description": "Opt-in adventure-based matchmaking availability profile.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "country": { "type": "string" },
+        "targetAdventureId": { "type": "string" },
+        "targetDestination": { "type": "string" },
+        "interests": { "type": "array" },
+        "preferredLanguage": { "type": "string" },
+        "spokenLanguages": { "type": "array" },
+        "experienceLevel": { "type": "string", "enum": ["BEGINNER", "INTERMEDIATE", "EXPLORER"] },
+        "preferredDurationMinutes": { "type": "integer" },
+        "availableTimeSlot": { "type": "string" },
+        "voicePreferred": { "type": "boolean" },
+        "isAvailable": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "displayName", "country", "targetAdventureId", "targetDestination", "preferredLanguage", "spokenLanguages", "experienceLevel", "preferredDurationMinutes", "availableTimeSlot", "voicePreferred", "isAvailable", "updatedAt"]
+    },
+    "NiloraCrew": {
+      "title": "NiloraCrew",
+      "description": "Persistent social crew formed through shared adventures.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "leaderId": { "type": "string" },
+        "memberIds": { "type": "array" },
+        "memberNames": { "type": "object" },
+        "memberCountries": { "type": "object" },
+        "sharedInterests": { "type": "array" },
+        "focusDestination": { "type": "string" },
+        "plannedAdventureIds": { "type": "array" },
+        "adventureHistoryTitles": { "type": "array" },
+        "joinPolicy": { "type": "string", "enum": ["OPEN", "INVITE_ONLY"] },
+        "voiceChannelEnabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "leaderId", "memberIds", "memberNames", "memberCountries", "focusDestination", "joinPolicy", "voiceChannelEnabled", "createdAt", "updatedAt"]
+    },
+    "CrewMessage": {
+      "title": "CrewMessage",
+      "description": "Persistent crew conversation and future trip planning message.",
+      "type": "object",
+      "properties": {
+        "crewId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "originalText": { "type": "string" },
+        "sourceLanguage": { "type": "string" },
+        "translations": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["crewId", "senderId", "senderName", "originalText", "sourceLanguage", "createdAt"]
+    },
+    "RealityEvent": {
+      "title": "RealityEvent",
+      "description": "Real-world global or local event with explicit verification provenance.",
+      "type": "object",
+      "properties": {
+        "creatorId": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string", "enum": ["CULTURAL", "FESTIVAL", "MUSIC", "SPORTS", "TOURNAMENT", "COMMUNITY", "EXHIBITION", "CONFERENCE", "TOURISM", "OUTDOOR", "EDUCATIONAL", "SEASONAL"] },
+        "description": { "type": "string" },
+        "countryCode": { "type": "string" },
+        "countryName": { "type": "string" },
+        "cityName": { "type": "string" },
+        "venueName": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "hasVerifiedCoordinates": { "type": "boolean" },
+        "startDateIso": { "type": "string" },
+        "endDateIso": { "type": "string" },
+        "timeWindowLabel": { "type": "string" },
+        "freeVerified": { "type": "boolean" },
+        "priceNote": { "type": "string" },
+        "organizerName": { "type": "string" },
+        "organizerType": { "type": "string", "enum": ["OFFICIAL_INSTITUTION", "CULTURAL_CENTER", "LOCAL_COMMUNITY", "SPORTS_CLUB", "USER_ORGANIZER", "EXTERNAL_OPEN_SOURCE"] },
+        "officialUrl": { "type": "string" },
+        "conditionsNote": { "type": "string" },
+        "safetyNote": { "type": "string" },
+        "ageMinimum": { "type": "integer" },
+        "verificationTier": { "type": "string", "enum": ["ADMIN_VERIFIED", "UNVERIFIED_USER_SUBMITTED", "EXTERNAL_OPEN_SOURCE"] },
+        "lastVerifiedLabel": { "type": "string" },
+        "status": { "type": "string", "enum": ["UPCOMING", "ACTIVE", "CANCELLED", "COMPLETED"] },
+        "maxParticipants": { "type": "integer" },
+        "participantIds": { "type": "array" },
+        "participantNames": { "type": "object" },
+        "pendingRequestIds": { "type": "array" },
+        "joinPolicy": { "type": "string", "enum": ["OPEN", "REQUEST_APPROVAL"] },
+        "linkedAdventureId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["creatorId", "creatorName", "title", "category", "description", "countryCode", "countryName", "cityName", "venueName", "hasVerifiedCoordinates", "startDateIso", "freeVerified", "organizerName", "organizerType", "verificationTier", "status", "maxParticipants", "participantIds", "participantNames", "pendingRequestIds", "joinPolicy", "createdAt", "updatedAt"]
+    },
+    "RealityEventMessage": {
+      "title": "RealityEventMessage",
+      "description": "Multilingual participant chat inside a Reality Event.",
+      "type": "object",
+      "properties": {
+        "eventId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "originalText": { "type": "string" },
+        "sourceLanguage": { "type": "string" },
+        "translations": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["eventId", "senderId", "senderName", "originalText", "sourceLanguage", "createdAt"]
+    },
+    "TeamActivityPost": {
+      "title": "TeamActivityPost",
+      "description": "Real-world Go Together, Play Together, Team Up, or Community Impact group.",
+      "type": "object",
+      "properties": {
+        "creatorId": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "domain": { "type": "string", "enum": ["GO_TOGETHER", "PLAY_SPORTS", "SOCIAL_GAME", "ADVENTURE_OUTDOOR", "COMMUNITY_IMPACT"] },
+        "subCategory": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "countryName": { "type": "string" },
+        "cityName": { "type": "string" },
+        "publicMeetingSpot": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "scheduledDateLabel": { "type": "string" },
+        "skillLevel": { "type": "string", "enum": ["BEGINNER", "INTERMEDIATE", "ADVANCED", "ALL_LEVELS"] },
+        "equipmentNote": { "type": "string" },
+        "safetyRules": { "type": "string" },
+        "ageMinimum": { "type": "integer" },
+        "joinPolicy": { "type": "string", "enum": ["PUBLIC", "REQUEST_APPROVAL", "INVITE_ONLY"] },
+        "teamStatus": { "type": "string", "enum": ["LOOKING_FOR_PARTICIPANTS", "GROUP_FORMING", "GROUP_FULL", "ACTIVITY_CONFIRMED", "ACTIVITY_COMPLETED", "ACTIVITY_CANCELLED"] },
+        "maxParticipants": { "type": "integer" },
+        "participantIds": { "type": "array" },
+        "participantNames": { "type": "object" },
+        "pendingRequestIds": { "type": "array" },
+        "invitedUserIds": { "type": "array" },
+        "impactOrganizationName": { "type": "string" },
+        "impactVerifiedByAdmin": { "type": "boolean" },
+        "linkedAdventureId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["creatorId", "creatorName", "domain", "subCategory", "title", "description", "countryName", "cityName", "publicMeetingSpot", "scheduledDateLabel", "skillLevel", "safetyRules", "ageMinimum", "joinPolicy", "teamStatus", "maxParticipants", "participantIds", "participantNames", "pendingRequestIds", "invitedUserIds", "impactVerifiedByAdmin", "createdAt", "updatedAt"]
+    },
+    "ActivityGroupMessage": {
+      "title": "ActivityGroupMessage",
+      "description": "Multilingual coordination chat for confirmed Team-Up / Play Together members.",
+      "type": "object",
+      "properties": {
+        "activityId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "originalText": { "type": "string" },
+        "sourceLanguage": { "type": "string" },
+        "translations": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["activityId", "senderId", "senderName", "originalText", "sourceLanguage", "createdAt"]
+    },
+    "RealityMission": {
+      "title": "RealityMission",
+      "description": "Real-world or virtual exploration mission with strict separation.",
+      "type": "object",
+      "properties": {
+        "creatorId": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "templateType": { "type": "string" },
+        "executionMode": { "type": "string", "enum": ["REAL_WORLD", "VIRTUAL"] },
+        "title": { "type": "string" },
+        "objective": { "type": "string" },
+        "cityName": { "type": "string" },
+        "countryName": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "safetyAndEcoRules": { "type": "string" },
+        "targetSteps": { "type": "integer" },
+        "participantIds": { "type": "array" },
+        "submissionsCount": { "type": "integer" },
+        "status": { "type": "string", "enum": ["ACTIVE", "COMPLETED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["creatorId", "creatorName", "templateType", "executionMode", "title", "objective", "cityName", "countryName", "safetyAndEcoRules", "targetSteps", "participantIds", "submissionsCount", "status", "createdAt", "updatedAt"]
+    },
+    "MissionSubmission": {
+      "title": "MissionSubmission",
+      "description": "Consent-governed real-world or virtual mission completion evidence.",
+      "type": "object",
+      "properties": {
+        "missionId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "submissionMode": { "type": "string", "enum": ["REAL_WORLD_LOG", "VIRTUAL_PROGRESS"] },
+        "reflectionText": { "type": "string" },
+        "placeLabel": { "type": "string" },
+        "photoBase64": { "type": "string" },
+        "ecoSafetyConfirmed": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["missionId", "authorId", "authorName", "submissionMode", "reflectionText", "placeLabel", "ecoSafetyConfirmed", "createdAt"]
+    },
+    "GlobalChallenge": {
+      "title": "GlobalChallenge",
+      "description": "Individual, team, or international cultural/sports/impact challenge.",
+      "type": "object",
+      "properties": {
+        "creatorId": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "challengeScope": { "type": "string", "enum": ["INDIVIDUAL", "TEAM", "INTERNATIONAL"] },
+        "category": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "targetGoal": { "type": "integer" },
+        "participantIds": { "type": "array" },
+        "participantCountries": { "type": "array" },
+        "entriesCount": { "type": "integer" },
+        "cityName": { "type": "string" },
+        "countryName": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "status": { "type": "string", "enum": ["ACTIVE", "COMPLETED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["creatorId", "creatorName", "challengeScope", "category", "title", "description", "targetGoal", "participantIds", "participantCountries", "entriesCount", "cityName", "countryName", "status", "createdAt", "updatedAt"]
+    },
+    "ChallengeEntry": {
+      "title": "ChallengeEntry",
+      "description": "Verified entry submitted toward a Global Challenge.",
+      "type": "object",
+      "properties": {
+        "challengeId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "countryName": { "type": "string" },
+        "teamName": { "type": "string" },
+        "summaryText": { "type": "string" },
+        "pointsClaimed": { "type": "integer" },
+        "verificationLabel": { "type": "string", "enum": ["USER_SUBMITTED", "PARTICIPANT_CONFIRMED", "ADMIN_VERIFIED"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["challengeId", "authorId", "authorName", "countryName", "summaryText", "pointsClaimed", "verificationLabel", "createdAt"]
+    },
+    "RealityBridgeLink": {
+      "title": "RealityBridgeLink",
+      "description": "Owner-scoped Reality Bridge progress connecting virtual adventures to real activities or memories.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "virtualAdventureId": { "type": "string" },
+        "virtualAdventureTitle": { "type": "string" },
+        "destinationName": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["REALITY_EVENT", "TEAM_ACTIVITY", "BOOKING_ACTIVITY", "REAL_WORLD_MISSION", "NILORA_MEMORY"] },
+        "targetId": { "type": "string" },
+        "targetTitle": { "type": "string" },
+        "stage": { "type": "string", "enum": ["VIRTUAL", "PLANNED", "REGISTERED", "CONFIRMED", "COMPLETED"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "virtualAdventureId", "virtualAdventureTitle", "destinationName", "targetType", "targetId", "targetTitle", "stage", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/admin_users/{uid}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Server-side admin role assignments"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile and preferences"
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivateInfo" },
+      "description": "Owner-only PII record"
+    },
+    "/users/{userId}/blocked/{blockedUserId}": {
+      "schema": { "$ref": "#/entities/BlockedUser" },
+      "description": "Owner-only blocked user entries"
+    },
+    "/users/{userId}/favorites/{favId}": {
+      "schema": { "$ref": "#/entities/FavoriteItem" },
+      "description": "Saved places and activities"
+    },
+    "/users/{userId}/travel_notes/{noteId}": {
+      "schema": { "$ref": "#/entities/TravelNote" },
+      "description": "Personal travel notes in My Journey"
+    },
+    "/users/{userId}/notifications/{notifId}": {
+      "schema": { "$ref": "#/entities/AppNotification" },
+      "description": "User notifications"
+    },
+    "/public_profiles/{userId}": {
+      "schema": { "$ref": "#/entities/PublicProfile" },
+      "description": "Voluntarily discoverable global community profiles"
+    },
+    "/connection_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/ConnectionRequest" },
+      "description": "Community & language-exchange connection requests"
+    },
+    "/direct_conversations/{conversationId}": {
+      "schema": { "$ref": "#/entities/DirectConversation" },
+      "description": "One-to-one user conversations"
+    },
+    "/direct_conversations/{conversationId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/DirectMessage" },
+      "description": "One-to-one messages with original text, translations, and voice notes"
+    },
+    "/groups/{groupId}": {
+      "schema": { "$ref": "#/entities/GroupRoom" },
+      "description": "Multilingual community groups"
+    },
+    "/groups/{groupId}/join_requests/{reqId}": {
+      "schema": { "$ref": "#/entities/GroupJoinRequest" },
+      "description": "Group join requests and invitations"
+    },
+    "/groups/{groupId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/GroupMessage" },
+      "description": "Multilingual group messages"
+    },
+    "/countries/{countryId}": {
+      "schema": { "$ref": "#/entities/Country" },
+      "description": "Global country taxonomy"
+    },
+    "/cities/{cityId}": {
+      "schema": { "$ref": "#/entities/City" },
+      "description": "Destination cities and regions"
+    },
+    "/destinations/{destinationId}": {
+      "schema": { "$ref": "#/entities/Destination" },
+      "description": "Verified destinations, beaches, hotels, restaurants, attractions"
+    },
+    "/activities/{activityId}": {
+      "schema": { "$ref": "#/entities/ActivityListing" },
+      "description": "Verified trips and activities marketplace"
+    },
+    "/providers/{providerId}": {
+      "schema": { "$ref": "#/entities/ProviderProfile" },
+      "description": "Local Connect verified professionals and pending applications"
+    },
+    "/bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/BookingRecord" },
+      "description": "Traveler-to-provider booking requests and reservations"
+    },
+    "/conversation_rooms/{roomId}": {
+      "schema": { "$ref": "#/entities/ConversationRoom" },
+      "description": "Two-phone real-time translation rooms"
+    },
+    "/conversation_rooms/{roomId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ConversationMessage" },
+      "description": "Translated messages within a conversation room"
+    },
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/ContentReport" },
+      "description": "Safety and verification reports"
+    },
+    "/data_sources/{sourceId}": {
+      "schema": { "$ref": "#/entities/DataSourceRecord" },
+      "description": "Verified external and admin data sources"
+    },
+    "/audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Immutable admin and security audit trail"
+    },
+    "/world_postcards/{postcardId}": {
+      "schema": { "$ref": "#/entities/WorldPostcard" },
+      "description": "Living digital postcards across countries"
+    },
+    "/world_postcards/{postcardId}/contributions/{contributionId}": {
+      "schema": { "$ref": "#/entities/PostcardContribution" },
+      "description": "Cross-cultural story chain responses to a postcard"
+    },
+    "/culture_swaps/{swapId}": {
+      "schema": { "$ref": "#/entities/CultureSwap" },
+      "description": "Structured bidirectional cultural exchanges"
+    },
+    "/culture_swaps/{swapId}/entries/{entryId}": {
+      "schema": { "$ref": "#/entities/CultureSwapEntry" },
+      "description": "Participant contributions inside a Culture Swap"
+    },
+    "/world_quests/{questId}": {
+      "schema": { "$ref": "#/entities/WorldQuest" },
+      "description": "Collaborative international cultural missions"
+    },
+    "/world_quests/{questId}/contributions/{contributionId}": {
+      "schema": { "$ref": "#/entities/WorldQuestContribution" },
+      "description": "Collaborative contributions to a World Quest"
+    },
+    "/nilora_memories/{memoryId}": {
+      "schema": { "$ref": "#/entities/NiloraMemory" },
+      "description": "Chronological personal & shared memories with consent & visibility rules"
+    },
+    "/adventure_sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/LiveAdventureSession" },
+      "description": "Live multiplayer and solo adventure sessions"
+    },
+    "/adventure_sessions/{sessionId}/participants/{participantId}": {
+      "schema": { "$ref": "#/entities/SessionParticipantPresence" },
+      "description": "Real-time participant 3D spatial presence and beacons"
+    },
+    "/adventure_sessions/{sessionId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/SessionChatMessage" },
+      "description": "Multilingual messages inside live adventure sessions"
+    },
+    "/adventure_match_profiles/{userId}": {
+      "schema": { "$ref": "#/entities/AdventureMatchProfile" },
+      "description": "Opt-in adventure matchmaking availability profiles"
+    },
+    "/nilora_crews/{crewId}": {
+      "schema": { "$ref": "#/entities/NiloraCrew" },
+      "description": "Persistent social crews created from shared adventures"
+    },
+    "/nilora_crews/{crewId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/CrewMessage" },
+      "description": "Multilingual group communication for a NILORA Crew"
+    },
+    "/reality_events/{eventId}": {
+      "schema": { "$ref": "#/entities/RealityEvent" },
+      "description": "Real-world global and local events with provenance tiers"
+    },
+    "/reality_events/{eventId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/RealityEventMessage" },
+      "description": "Participant multilingual chat inside a Reality Event"
+    },
+    "/reality_activities/{activityId}": {
+      "schema": { "$ref": "#/entities/TeamActivityPost" },
+      "description": "Go Together, Play Together, Team Up, and Community Impact groups"
+    },
+    "/reality_activities/{activityId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ActivityGroupMessage" },
+      "description": "Confirmed member coordination chat"
+    },
+    "/reality_missions/{missionId}": {
+      "schema": { "$ref": "#/entities/RealityMission" },
+      "description": "Real World and Virtual Missions"
+    },
+    "/reality_missions/{missionId}/submissions/{submissionId}": {
+      "schema": { "$ref": "#/entities/MissionSubmission" },
+      "description": "Mission evidence submissions"
+    },
+    "/global_challenges/{challengeId}": {
+      "schema": { "$ref": "#/entities/GlobalChallenge" },
+      "description": "Individual and international team challenges"
+    },
+    "/global_challenges/{challengeId}/entries/{entryId}": {
+      "schema": { "$ref": "#/entities/ChallengeEntry" },
+      "description": "Transparent challenge progress entries"
+    },
+    "/users/{userId}/reality_bridge/{bridgeId}": {
+      "schema": { "$ref": "#/entities/RealityBridgeLink" },
+      "description": "Owner-only Virtual-to-Real Reality Bridge progress"
+    }
+  }
+}

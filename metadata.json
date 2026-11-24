@@ -1,0 +1,6 @@
+{
+  "name": "NILORA",
+  "description": "Global travel, tourism discovery, booking, and real-time multilingual communication super app. Created & Founded by Mohamed Mostafa Taher.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
