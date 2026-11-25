@@ -61,3 +61,14 @@ OSM ODbL (attributed) · Open-Meteo CC BY 4.0 · USGS/Aladhan/Nager/open.er-api 
 - Procedural canvas textures (free, zero-download): asphalt with lane dashes, pavement blocks, building facades with lit windows.
 - Dusk gradient sky dome matched to fog.
 - Honesty note: stylized low-poly city + chibi CC0 characters; not photoreal. Textures are procedural, not photos.
+
+## Stage 5: Camera + glow (v21-v22) - live
+- Camera collision: the follow-camera boom shortens instead of clipping through buildings (ray-vs-building sampling, per-building heights).
+- Emissive lit windows (emissiveMap) + subtle UnrealBloom on HQ (gated, off in LQ); bloom tuned down after first pass washed out.
+
+## Stage 6: Real Cairo streets (v22-v25) - live
+- Downtown Cairo road network from OpenStreetMap (ODbL): 391 real ways baked to web/cairo-roads.js; no runtime API key.
+- Roads render as textured ribbons along real geometry; cars and pedestrians drive/walk the real streets (arc-length following, lane/sidewalk offsets).
+- Buildings placed along streets with distance-to-road clearance (no overlap), player spawn snapped to a major road, save-restore collision guard.
+- Poly Haven CC0 photo textures: cobblestone ground; asphalt kept procedural (dashes align with real road direction).
+- Honesty note: buildings remain procedural low-poly boxes; only the street LAYOUT is real Cairo data. Grid city stays as fallback if the data file fails to load.
