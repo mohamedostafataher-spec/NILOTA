@@ -62,13 +62,14 @@ OSM ODbL (attributed) · Open-Meteo CC BY 4.0 · USGS/Aladhan/Nager/open.er-api 
 - Dusk gradient sky dome matched to fog.
 - Honesty note: stylized low-poly city + chibi CC0 characters; not photoreal. Textures are procedural, not photos.
 
-## Stage 5: Camera + glow (v21-v22) - live
-- Camera collision: the follow-camera boom shortens instead of clipping through buildings (ray-vs-building sampling, per-building heights).
-- Emissive lit windows (emissiveMap) + subtle UnrealBloom on HQ (gated, off in LQ); bloom tuned down after first pass washed out.
+## Stage 7: Real CC0 building models (v27) - live
+- 10 Quaternius building GLBs (buildings_pack_2/3, CC0-1.0, via jsDelivr) replace procedural boxes in Cairo mode; measured with Box3 at load (node-scaled geometry), scaled to street slot, grounded.
+- Colliders from measured footprints; verified live (wall pin + slide-along-wall + alley pass-through).
+- Procedural boxes remain as automatic fallback if GLBs fail to load.
+- Honesty note: stylized low-poly with flat colors (no textures); not photoreal.
 
-## Stage 6: Real Cairo streets (v22-v25) - live
-- Downtown Cairo road network from OpenStreetMap (ODbL): 391 real ways baked to web/cairo-roads.js; no runtime API key.
-- Roads render as textured ribbons along real geometry; cars and pedestrians drive/walk the real streets (arc-length following, lane/sidewalk offsets).
-- Buildings placed along streets with distance-to-road clearance (no overlap), player spawn snapped to a major road, save-restore collision guard.
-- Poly Haven CC0 photo textures: cobblestone ground; asphalt kept procedural (dashes align with real road direction).
-- Honesty note: buildings remain procedural low-poly boxes; only the street LAYOUT is real Cairo data. Grid city stays as fallback if the data file fails to load.
+## Stage 8: Street props (v28) - live
+- Streetlights (single/double), palm trees (4 variants), traffic lights and stop signs from Quaternius street_pack/nature_pack (CC0-1.0).
+- Placed along the real OSM Cairo road network: lights every ~22 m alternating sides, palms every ~34 m, signs/lights at detected intersections. Small pole colliders; placement skips building footprints.
+- Caps for mobile: 100 lights, 110 palms, 22 intersection props.
+- Honesty note: prop placement is algorithmic along road edges, not surveyed real-world positions.
