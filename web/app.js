@@ -868,7 +868,7 @@ function renderHome() {
       <div id="searchResults" class="search-results"></div>
     </div>
     <div class="progress-strip">
-      <span>🔖 ${n}/${TOTAL_STAMPS}</span><span>⭐ ${i18n.points(state.points)}</span><span>${lvl.badge} ${lvl[state.lang]}</span>
+      <span>🔖 ${n}/${TOTAL_STAMPS}</span><span>${lvl.badge} ${lvl[state.lang]}</span>
     </div>
     ${nextM ? `<a class="home-card-row" href="#/challenges"><span class="hub-ico">🎯</span><div><b>${i18n.dailyMission}</b><small>${nextM[state.lang]} · +${nextM.pts}</small></div><span class="row-arrow">‹</span></a>` : ''}
     <a class="home-card-row" href="#/challenges"><span class="hub-ico">🏆</span><div><b>${i18n.weeklyTitle}</b><small>${i18n.weeklyReward}</small></div><span class="row-arrow">‹</span></a>
