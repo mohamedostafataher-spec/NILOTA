@@ -119,10 +119,10 @@ function newPc(){pc=new RTCPeerConnection(ICE);icequeue=[];
 function mic(){if(/fakemic=1/.test(location.search)){var ac=new AudioContext(),o=ac.createOscillator(),d=ac.createMediaStreamDestination();o.connect(d);o.start();return Promise.resolve(d.stream)}return navigator.mediaDevices&&navigator.mediaDevices.getUserMedia?navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}):Promise.reject(new Error('nomic'))}
 function startVoice(){if(!linked){vset('Connect first.');return}
  mic().then(function(s){vstream=s;newPc();s.getTracks().forEach(function(t){pc.addTrack(t,s)});vstate='calling';vset('Calling…');
-  return pc.createOffer().then(function(o){return pc.setLocalDescription(o).then(function(){pub({t:'sig',k:'offer',d:pc.localDescription})})})}).catch(function(e){vset('Voice needs microphone access.');vstate='off'})}
+  return pc.createOffer().then(function(o){return pc.setLocalDescription(o).then(function(){pub({t:'sig',k:'offer',d:pc.localDescription})})})}).catch(function(e){vset((e&&e.message==='nomic')||(e&&e.name==='NotAllowedError')?'Voice needs microphone access.':'Voice error: '+(e&&e.message||e));vstate='off'})}
 function acceptVoice(){var off=pendingOffer;pendingOffer=null;
  mic().then(function(s){vstream=s;newPc();s.getTracks().forEach(function(t){pc.addTrack(t,s)});
-  return pc.setRemoteDescription(off).then(function(){icequeue.splice(0).forEach(function(c){pc.addIceCandidate(c).catch(function(){})});return pc.createAnswer()}).then(function(a){return pc.setLocalDescription(a).then(function(){pub({t:'sig',k:'answer',d:pc.localDescription})})})}).catch(function(){vset('Voice needs microphone access.')})}
+  return pc.setRemoteDescription(off).then(function(){icequeue.splice(0).forEach(function(c){pc.addIceCandidate(c).catch(function(){})});return pc.createAnswer()}).then(function(a){return pc.setLocalDescription(a).then(function(){pub({t:'sig',k:'answer',d:pc.localDescription})})})}).catch(function(e){vset('Voice error: '+(e&&e.message||e))})}
 function stopVoice(silent){try{pc&&pc.close()}catch(e){}pc=null;if(vstream)vstream.getTracks().forEach(function(t){t.stop()});vstream=null;vstate='off';$('vbtn').textContent='📞 Add live voice (beta)';if(!silent){vset('');pub({t:'sig',k:'stop'})}}
 function onSig(m){
  if(m.k==='offer'){pendingOffer=new RTCSessionDescription(m.d);vset('The other person wants voice. Tap the button to accept.');$('vbtn').textContent='📞 Accept voice call';vstate='ringing'}
