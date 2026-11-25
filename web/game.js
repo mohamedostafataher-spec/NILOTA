@@ -42,6 +42,7 @@
         if (!Game.running) return;
         Input.keys[e.code] = true;
         if (e.code === 'Space') { Input.jumpQueued = true; e.preventDefault(); }
+        if (e.code === 'KeyE') Drive.toggle();
       });
       window.addEventListener('keyup', (e) => { Input.keys[e.code] = false; });
 
@@ -303,6 +304,72 @@
     },
   };
 
+  /* ---------- Drive: one drivable car, arcade physics ---------- */
+  const Drive = {
+    active: false, mesh: null, x: 4, z: 34, heading: Math.PI, speed: 0,
+    ACCEL: 14, BRAKE: 22, MAX: 22, MAXREV: 7, TURN: 2.2,
+    build(scene) {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(2, 0.8, 4.2),
+        new THREE.MeshLambertMaterial({ color: 0xd4af37 }));
+      body.position.y = 0.7;
+      const cabin = new THREE.Mesh(
+        new THREE.BoxGeometry(1.7, 0.7, 2),
+        new THREE.MeshLambertMaterial({ color: 0x22334d }));
+      cabin.position.set(0, 1.3, -0.2);
+      g.add(body); g.add(cabin);
+      const wm = new THREE.MeshLambertMaterial({ color: 0x111111 });
+      [[-0.95, 1.4], [0.95, 1.4], [-0.95, -1.4], [0.95, -1.4]].forEach(([x, z]) => {
+        const w = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.3, 10), wm);
+        w.rotation.z = Math.PI / 2; w.position.set(x, 0.38, z);
+        g.add(w);
+      });
+      g.position.set(Drive.x, 0, Drive.z);
+      g.rotation.y = Drive.heading;
+      scene.add(g);
+      Drive.mesh = g;
+    },
+    near() {
+      return Math.hypot(Player.x - Drive.x, Player.z - Drive.z) < 4;
+    },
+    toggle() {
+      if (Drive.active) {
+        Drive.active = false;
+        Player.x = Drive.x + Math.sin(Drive.heading + Math.PI / 2) * 2.6;
+        Player.z = Drive.z + Math.cos(Drive.heading + Math.PI / 2) * 2.6;
+        Player.mesh.visible = true;
+        HUD.driveBtn(false);
+      } else if (Drive.near()) {
+        Drive.active = true;
+        Player.mesh.visible = false;
+        HUD.driveBtn(true);
+        HUD.toast('🚗');
+      }
+    },
+    update(dt) {
+      if (!Drive.active) return;
+      const mv = Input.move();
+      const throttle = mv.z, steer = mv.x;
+      if (throttle > 0) Drive.speed += Drive.ACCEL * throttle * dt;
+      else if (throttle < 0) Drive.speed += (Drive.speed > 0.5 ? -Drive.BRAKE : Drive.ACCEL * 0.6 * throttle) * dt;
+      else Drive.speed -= Math.sign(Drive.speed) * Math.min(Math.abs(Drive.speed), 8 * dt);
+      Drive.speed = Math.max(-Drive.MAXREV, Math.min(Drive.MAX, Drive.speed));
+      if (Math.abs(Drive.speed) > 0.3) {
+        Drive.heading -= steer * Drive.TURN * dt * Math.min(1, Math.abs(Drive.speed) / 8) * Math.sign(Drive.speed);
+      }
+      const nx = Drive.x + Math.sin(Drive.heading) * Drive.speed * dt;
+      const nz = Drive.z + Math.cos(Drive.heading) * Drive.speed * dt;
+      const bound = CITY.size / 2 - 2;
+      if (!World.hit(nx, Drive.z)) Drive.x = Math.max(-bound, Math.min(bound, nx)); else Drive.speed = 0;
+      if (!World.hit(Drive.x, nz)) Drive.z = Math.max(-bound, Math.min(bound, nz)); else Drive.speed = 0;
+      Drive.mesh.position.set(Drive.x, 0, Drive.z);
+      Drive.mesh.rotation.y = Drive.heading;
+      // keep player glued (hidden) so camera + missions keep working
+      Player.x = Drive.x; Player.z = Drive.z;
+    },
+  };
+
   /* ---------- Audio: tiny WebAudio ambience, off until toggled ---------- */
   const Audio8 = {
     ctx: null, on: false, nodes: null,
@@ -451,6 +518,7 @@
         '<div id="gfps" class="gpanel gfps">…</div>' +
         '<button id="gquality" class="gpanel gbtn" type="button">HQ</button>' +
         '<button id="gsound" class="gpanel gbtn" type="button" style="top:calc(52px + env(safe-area-inset-top));right:64px">🔇</button>' +
+        '<button id="gdrive" class="gpanel gbtn" type="button" style="top:calc(94px + env(safe-area-inset-top));right:64px">🚗</button>' +
         '<button id="gexit" class="gpanel gbtn" type="button">✕</button>' +
         '<div id="gtoast"></div>' +
         '<div id="gjoy"><div id="gjoyKnob"></div></div>' +
@@ -463,6 +531,7 @@
       };
       HUD.el.exit.addEventListener('click', () => { location.hash = '#/explore'; });
       wrap.querySelector('#gsound').addEventListener('click', (e) => Audio8.toggle(e.currentTarget));
+      wrap.querySelector('#gdrive').addEventListener('click', () => Drive.toggle());
       HUD.el.quality.addEventListener('click', () => {
         Game.hq = !Game.hq;
         HUD.el.quality.textContent = Game.hq ? 'HQ' : 'LQ';
@@ -485,6 +554,10 @@
       HUD._t = setTimeout(() => HUD.el.toast.classList.remove('show'), 2400);
     },
     fps(v) { HUD.el.fps.textContent = v + ' fps'; },
+    driveBtn(on) {
+      const b = document.getElementById('gdrive');
+      if (b) b.style.background = on ? '#d4af37' : 'rgba(11,20,32,.82)';
+    },
   };
 
   const CSS =
@@ -542,6 +615,7 @@
       World.colliders = []; World.landmarks = [];
       World.build(scene);
       Vehicles.cars = []; Vehicles.build(scene);
+      Drive.build(scene);
       HUD.mount(host);
       HUD.toast('⏳ loading city…');
       await Assets.loadAll();
@@ -574,7 +648,7 @@
         const dt = Math.min(0.05, (now - Game.last) / 1000);
         Game.last = now;
         if (!document.hidden) {
-          Player.update(dt, FollowCam.yaw);
+          if (Drive.active) Drive.update(dt); else Player.update(dt, FollowCam.yaw);
           Vehicles.update(dt);
           Pedestrians.update(dt);
           FollowCam.update(camera);
@@ -628,7 +702,7 @@
     start: Game.start.bind(Game), stop: Game.stop.bind(Game),
     debug: () => ({ x: Player.x, y: Player.y, z: Player.z, grounded: Player.grounded,
       found: Mission.foundCount(), cars: Vehicles.cars.length,
-      peds: Pedestrians.list.length, anim: Player.human ? Player.human.currentName() : 'capsule',
+      peds: Pedestrians.list.length, driving: Drive.active, carSpeed: Math.round(Drive.speed * 10) / 10, anim: Player.human ? Player.human.currentName() : 'capsule',
       assets: Object.keys(Assets.lib),
       collides: (x, z) => World.hit(x, z),
       tp: (x, z) => { Player.x = x; Player.z = z; } }),
