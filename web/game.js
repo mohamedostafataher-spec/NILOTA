@@ -698,6 +698,79 @@
     },
   };
 
+
+  /* ---------- Minimap: prerendered road layer + live player/landmark dots ---------- */
+  const Minimap = {
+    S: 148, cv: null, ctx: null, base: null, t: 0, scale: 0.33,
+    init(root) {
+      const cv = document.createElement('canvas');
+      cv.id = 'gmap';
+      cv.width = Minimap.S * 2; cv.height = Minimap.S * 2;
+      root.appendChild(cv);
+      Minimap.cv = cv;
+      Minimap.ctx = cv.getContext('2d');
+      Minimap.buildBase();
+    },
+    buildBase() {
+      const S = Minimap.S * 2;
+      const off = document.createElement('canvas');
+      off.width = S; off.height = S;
+      const c = off.getContext('2d');
+      c.fillStyle = 'rgba(8,14,26,0.88)';
+      c.beginPath(); c.arc(S / 2, S / 2, S / 2 - 2, 0, Math.PI * 2); c.fill();
+      let maxE = 185;
+      Cairo.paths.forEach((p) => p.pts.forEach((pt) => { maxE = Math.max(maxE, Math.abs(pt[0]), Math.abs(pt[1])); }));
+      Minimap.scale = (S / 2 - 8) / maxE;
+      const px = (x, z) => [S / 2 + x * Minimap.scale, S / 2 + z * Minimap.scale];
+      c.save();
+      c.beginPath(); c.arc(S / 2, S / 2, S / 2 - 2, 0, Math.PI * 2); c.clip();
+      const cols = ['#3d4c66', '#5a6c8c', '#7d90b3', '#a9b8d4'];
+      Cairo.paths.forEach((p) => {
+        c.strokeStyle = cols[p.r] || cols[0];
+        c.lineWidth = [1, 1.5, 2.5, 3.5][p.r] || 1;
+        c.beginPath();
+        p.pts.forEach((pt, i) => {
+          const [mx, my] = px(pt[0], pt[1]);
+          if (i === 0) c.moveTo(mx, my); else c.lineTo(mx, my);
+        });
+        c.stroke();
+      });
+      c.restore();
+      c.strokeStyle = '#d4af37';
+      c.lineWidth = 2;
+      c.beginPath(); c.arc(S / 2, S / 2, S / 2 - 2, 0, Math.PI * 2); c.stroke();
+      Minimap.base = off;
+    },
+    update(dt) {
+      if (!Minimap.ctx || !Minimap.base) return;
+      Minimap.t += dt;
+      if (Minimap.t < 0.25) return;
+      Minimap.t = 0;
+      const S = Minimap.S * 2, c = Minimap.ctx;
+      c.clearRect(0, 0, S, S);
+      c.drawImage(Minimap.base, 0, 0);
+      const px = (x, z) => [S / 2 + x * Minimap.scale, S / 2 + z * Minimap.scale];
+      // landmarks: gold for unfound, dim green for found
+      World.landmarks.forEach((l) => {
+        const [mx, my] = px(l.x, l.z);
+        c.fillStyle = l.found ? 'rgba(90,160,110,0.8)' : '#ffd257';
+        c.beginPath(); c.arc(mx, my, 3.4, 0, Math.PI * 2); c.fill();
+      });
+      // player / car
+      const x = Drive.active ? Drive.x : Player.x, z = Drive.active ? Drive.z : Player.z;
+      const [mx, my] = px(x, z);
+      const yaw = Drive.active ? Drive.heading : FollowCam.yaw + Math.PI;
+      c.fillStyle = Drive.active ? '#ff7b6b' : '#7CFFB2';
+      c.save();
+      c.translate(mx, my);
+      c.rotate(-yaw);
+      c.beginPath();
+      c.moveTo(0, -7); c.lineTo(4.6, 5); c.lineTo(-4.6, 5);
+      c.closePath(); c.fill();
+      c.restore();
+    },
+  };
+
   /* Animated human wrapper: mesh + mixer + simple state machine. */
   function makeHuman(key) {
     const mesh = Assets.clone(key);
@@ -1138,6 +1211,7 @@
     '.gpanel{position:fixed;z-index:61;background:rgba(11,20,32,.82);color:#e8dcc0;border:1px solid #d4af37;' +
     'border-radius:10px;padding:8px 12px;font:600 13px/1.3 system-ui}' +
     '#gmission{top:calc(10px + env(safe-area-inset-top));left:10px;max-width:70vw}' +
+    '#gmap{position:fixed;top:calc(62px + env(safe-area-inset-top));left:10px;width:148px;height:148px;z-index:61;border-radius:50%}' +
     '.gfps{top:calc(10px + env(safe-area-inset-top));right:120px}' +
     '#gquality{top:calc(10px + env(safe-area-inset-top));right:64px;cursor:pointer}' +
     '#gexit{top:calc(10px + env(safe-area-inset-top));right:10px;cursor:pointer}' +
@@ -1219,6 +1293,7 @@
       }
 
       HUD.mount(host);
+      Minimap.init(host);
       HUD.toast('⏳ loading city…');
       await Buildings.loadAll();
       await Props.loadAll();
@@ -1284,6 +1359,7 @@
           Pedestrians.update(dt);
           FollowCam.update(camera);
           Mission.update();
+          Minimap.update(dt);
           const px = Drive.active ? Drive.x : Player.x, pz = Drive.active ? Drive.z : Player.z;
           if (Game.sun) {
             Game.sun.position.set(px + 70, 95, pz + 35);
