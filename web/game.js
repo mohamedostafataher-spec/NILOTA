@@ -328,7 +328,15 @@
               if (Math.abs(x) > 190 || Math.abs(z) > 190) continue;
               const minX = x - w / 2 - 0.6, maxX = x + w / 2 + 0.6, minZ = z - d / 2 - 0.6, maxZ = z + d / 2 + 0.6;
               if (overlaps(minX, maxX, minZ, maxZ) || roadDist(x, z) < half + 1.2) continue;
-              addBuilding(x, z, w, d, h);
+              const bp = Buildings.place(w, d);
+              if (bp) {
+                bp.mesh.position.x += x; bp.mesh.position.z += z;
+                if (rnd() > 0.5) { bp.mesh.rotation.y = Math.PI; }
+                g.add(bp.mesh);
+                World.colliders.push({ minX: x - bp.w / 2 - 0.6, maxX: x + bp.w / 2 + 0.6, minZ: z - bp.d / 2 - 0.6, maxZ: z + bp.d / 2 + 0.6, h: bp.h });
+              } else {
+                addBuilding(x, z, w, d, h);
+              }
               placed++;
             }
           }
@@ -448,6 +456,53 @@
       return src ? THREE.SkeletonUtils.clone(src.scene) : null;
     },
     anims(key) { return Assets.lib[key] ? Assets.lib[key].animations : []; },
+  };
+
+
+  /* ---------- Real CC0 building models (Quaternius packs, CC0-1.0, via jsDelivr) ---------- */
+  const Buildings = {
+    lib: [],
+    CDN: 'https://cdn.jsdelivr.net/gh/trebeljahr/quaternius-showcase@main/public/glb/',
+    FILES: [
+      'buildings_pack_2/Building2_Large.glb',
+      'buildings_pack_2/Building2_Small.glb',
+      'buildings_pack_2/Building3_Small.glb',
+      'buildings_pack_2/Building4.glb',
+      'buildings_pack_3/2Story_GableRoof_Mat.glb',
+      'buildings_pack_3/2Story_Balcony_Mat.glb',
+      'buildings_pack_3/2Story_Center_Mat.glb',
+      'buildings_pack_3/3Story_Balcony_Mat.glb',
+      'buildings_pack_3/2Story_Wide_Mat.glb',
+      'buildings_pack_3/1Story_Sign_Mat.glb',
+    ],
+    loadOne(url) {
+      return new Promise((resolve) => {
+        try {
+          new THREE.GLTFLoader().load(url, (g) => resolve(g.scene), undefined, () => resolve(null));
+        } catch (e) { resolve(null); }
+      });
+    },
+    async loadAll() {
+      const jobs = Buildings.FILES.map((f) => Buildings.loadOne(Buildings.CDN + f));
+      const out = await Promise.all(jobs);
+      Buildings.lib = out.filter(Boolean).map((scene) => {
+        scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+        const box = new THREE.Box3().setFromObject(scene);
+        const size = new THREE.Vector3(); box.getSize(size);
+        return { scene, size };
+      });
+      return Buildings.lib.length;
+    },
+    place(targetW, targetD) {
+      if (!Buildings.lib.length) return null;
+      const b = Buildings.lib[Math.floor(Math.random() * Buildings.lib.length)];
+      const mesh = b.scene.clone(true);
+      const s = Math.min(targetW / Math.max(0.1, b.size.x), targetD / Math.max(0.1, b.size.z));
+      mesh.scale.setScalar(s);
+      const box = new THREE.Box3().setFromObject(mesh);
+      mesh.position.y = -box.min.y;
+      return { mesh, w: b.size.x * s, d: b.size.z * s, h: b.size.y * s };
+    },
   };
 
   /* Animated human wrapper: mesh + mixer + simple state machine. */
@@ -952,6 +1007,9 @@
         Game.composer = composer;
       }
 
+      HUD.mount(host);
+      HUD.toast('⏳ loading city…');
+      await Buildings.loadAll();
       World.colliders = []; World.landmarks = [];
       World.build(scene);
       Vehicles.cars = []; Vehicles.build(scene);
@@ -964,8 +1022,6 @@
         Drive.x = at.x + 4; Drive.z = at.z + 4;
         if (Drive.mesh) { Drive.mesh.position.set(Drive.x, 0, Drive.z); Drive.heading = Math.atan2(at.dx, at.dz); Drive.mesh.rotation.y = Drive.heading; }
       }
-      HUD.mount(host);
-      HUD.toast('⏳ loading city…');
       await Assets.loadAll();
       if (!Assets.lib.player) await Assets.load('player');
       Pedestrians.list = []; Pedestrians.build(scene);
