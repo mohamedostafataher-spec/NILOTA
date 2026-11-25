@@ -1,0 +1,81 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>مرشد مصر · Murshid Misr</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#0b0f14">
+<style>
+:root{--bg:#0b0f14;--card:#141b24;--line:#233040;--gold:#e0b04a;--red:#ff5d4d;--green:#3ecf8e;--tx:#e9eef5;--mut:#8fa1b5}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,"Segoe UI",Tahoma,sans-serif;padding-bottom:78px}
+header{padding:16px 16px 6px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}h1{margin:0;font-size:21px}h1 b{color:var(--gold)}.sub{color:var(--mut);font-size:12.5px;margin-top:3px}
+.lang{background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:99px;padding:5px 12px;font-size:13px}
+section{display:none;padding:6px 16px}section.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}.card h3{margin:0 0 6px;font-size:16px}
+button{background:var(--gold);color:#111;border:0;border-radius:10px;padding:10px 14px;font-weight:700;font-size:14px}button.g{background:transparent;color:var(--gold);border:1px solid var(--gold)}button.w{width:100%}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#0e141b;border-top:1px solid var(--line)}nav a{flex:1;text-align:center;padding:10px 2px;font-size:12px;color:var(--mut)}nav a.on{color:var(--gold);font-weight:700}nav a i{display:block;font-style:normal;font-size:20px}
+select,input{width:100%;background:#0e141b;color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:16px;margin:6px 0}
+.v{border-radius:12px;padding:12px;margin-top:10px;font-weight:700}.ok{background:#0f2a1f;color:var(--green)}.warn{background:#2f2410;color:var(--gold)}.bad{background:#2f1511;color:var(--red)}
+.src{font-size:11px;color:var(--mut);margin-top:6px;font-weight:400}.say{background:#0f2a1f;border:1px solid #1d5a40;border-radius:10px;padding:10px;margin-top:8px;display:flex;gap:8px;align-items:center;justify-content:space-between}
+.row{display:flex;gap:8px}.row>*{flex:1}.big{font-size:28px;font-weight:800}.pill{display:inline-block;background:#1d2733;border-radius:99px;padding:3px 10px;font-size:12px;margin:2px;color:var(--mut)}
+.demo{background:#2f2410;color:var(--gold);font-size:11.5px;padding:6px 10px;border-radius:8px;margin:8px 0}
+</style></head><body>
+<header><div><h1>مرشد مصر · <b data-t="Murshid Misr|Murshid Misr"></b></h1><div class="sub" data-t="Right price. Right now. For residents and visitors.|السعر الصح. اللي بيحصل دلوقتي. لأهل البلد والزوار."></div></div><button class="lang" onclick="tl()">EN/ع</button></header>
+
+<section id="s0" class="on">
+<div class="card"><h3 data-t="What's happening in my area now|إيه اللي بيحصل في منطقتي دلوقتي"></h3>
+<select id="city" onchange="wx()"></select><div id="wxo"></div>
+<div class="src" data-t="Weather from Open-Meteo forecast. Alerts are rough, not official warnings.|الطقس من توقعات Open-Meteo. التنبيهات تقريبية مش تحذيرات رسمية."></div></div>
+<div class="card"><h3 data-t="Report from the street|بلّغ من الشارع"></h3>
+<div class="row"><button class="g" onclick="rep('water')" data-t="💧 Water cut|💧 المية قاطعة"></button><button class="g" onclick="rep('flood')" data-t="🌧️ Flooding|🌧️ مية في الشارع"></button></div>
+<div class="row" style="margin-top:8px"><button class="g" onclick="rep('power')" data-t="⚡ Power cut|⚡ الكهربا قاطعة"></button><button class="g" onclick="rep('traffic')" data-t="🚗 Gridlock|🚗 زحمة خانقة"></button></div>
+<div id="reps"></div><div class="demo" data-t="Demo: reports are saved on your phone only until a shared database is connected.|تجريبي: البلاغات محفوظة على موبايلك بس لحد ما نربط قاعدة بيانات مشتركة."></div></div>
+</section>
+
+<section id="s1">
+<div class="card"><h3 data-t="Is this price right?|السعر ده صح؟"></h3>
+<select id="item" onchange="fx()"></select>
+<input id="quote" type="number" inputmode="numeric" data-ph="EGP you were quoted|السعر اللي اتقالك بالجنيه">
+<button class="w" onclick="fx()" data-t="Check|افحص"></button><div id="res"></div></div>
+<div class="card"><h3 data-t="Add a price you paid|ضيف سعر دفعته"></h3><div class="row"><input id="pp" type="number" inputmode="numeric" data-ph="EGP|جنيه"><button onclick="addp()" data-t="Add|ضيف"></button></div>
+<div id="med"></div><div class="demo" data-t="Demo: community prices are local to your phone for now.|تجريبي: أسعار المجتمع محفوظة على موبايلك دلوقتي."></div></div>
+</section>
+
+<section id="s2">
+<div class="card"><h3 data-t="Cairo Metro fare|سعر مترو القاهرة"></h3>
+<input id="st" type="number" inputmode="numeric" min="1" max="39" data-ph="Number of stations (1-39)|عدد المحطات (1-39)">
+<button class="w" onclick="metro()" data-t="Fare|احسب"></button><div id="mres"></div>
+<div class="src">cairo.gov.eg metro tickets · tafsela.net (Nov 2026)</div></div>
+<div class="card"><h3 data-t="Taxi or ride app|تاكسي أو تطبيق"></h3>
+<div id="ride"></div><div class="src">indietraveller.co · esimcompatibilitychecker.com</div></div>
+</section>
+
+<section id="s3">
+<div class="card"><h3 data-t="Common tricks · what to say|ألاعيب شائعة · قول إيه"></h3><div class="sub" data-t="Tap 🔊 to speak Arabic to them.|اضغط 🔊 ينطقها بالمصري."></div></div><div id="scams"></div>
+<div class="card"><h3 data-t="Tourist police|شرطة السياحة"></h3><div class="sub" data-t="Verify official numbers before launch.|لازم نراجع الأرقام الرسمية قبل الإطلاق."></div></div>
+</section>
+
+<nav><a class="on" onclick="go(0,this)"><i>📍</i><span data-t="Now|دلوقتي"></span></a><a onclick="go(1,this)"><i>💰</i><span data-t="Price|السعر"></span></a><a onclick="go(2,this)"><i>🚇</i><span data-t="Move|مشوارك"></span></a><a onclick="go(3,this)"><i>🛡️</i><span data-t="Shield|حماية"></span></a></nav>
+<script>
+let L=localStorage.l||'ar';const $=i=>document.getElementById(i);
+function tl(){L=L=='ar'?'en':'ar';localStorage.l=L;ap()}
+function T(s){const p=s.split('|');return L=='en'?p[0]:p[1]}
+function ap(){document.documentElement.lang=L;document.documentElement.dir=L=='ar'?'rtl':'ltr';document.querySelectorAll('[data-t]').forEach(e=>e.textContent=T(e.dataset.t));document.querySelectorAll('[data-ph]').forEach(e=>e.placeholder=T(e.dataset.ph));build();wx();reps();med();fx()}
+const C=[["Cairo|القاهرة",30.04,31.24],["Giza|الجيزة",29.98,31.13],["Alexandria|الإسكندرية",31.2,29.92],["Luxor|الأقصر",25.7,32.64],["Aswan|أسوان",24.09,32.9],["Hurghada|الغردقة",27.26,33.81]];
+const I=[["Giza complex entry|دخول مجمع الجيزة",700,"twosometravelers.com 2026"],["Khufu pyramid entry|دخول هرم خوفو",1500,"twosometravelers.com 2026"],["Khafre or Menkaure pyramid|هرم خفرع أو منقرع",280,"twosometravelers.com 2026"],["Horse carriage (official per source)|حنطور (رسمي حسب المصدر)",1000,"twosometravelers.com 2026"]];
+const S=[["\"The ticket office is closed\"|«الشباك مقفول»","Someone blocks the office and sells you a ticket with a tip.|حد بيقولك الشباك مقفول وبيبيعلك تذكرة بإكرامية.","No thanks, I'll go to the office myself.|مش محتاج، هروح الشباك بنفسي. شكرا.","مش محتاج، هروح الشباك بنفسي. شكرا."],
+["\"I'm an official\"|«أنا موظف رسمي»","Fake badge, then pushes you to a horse or guide.|كارت وهمي وبعدها يوجهك لحصان أو مرشد.","Thanks, I'll walk alone.|شكرا، هتمشى لوحدي ومش محتاج مساعدة.","شكرا، هتمشى لوحدي ومش محتاج مساعدة."],
+["\"Museum is closed today\"|«المتحف مقفول النهارده»","Redirects you to a shop or tour.|بيحولك لمحل أو رحلة.","I'm sure it's open, I'll check myself.|أنا متأكد إنه مفتوح، هروح وأشوف.","أنا متأكد إنه مفتوح، هروح وأشوف بنفسي."],
+["Meter is broken|العداد بايظ","Driver refuses the meter and quotes high.|السواق يرفض العداد ويقولك سعر عالي.","Stop please, I'll book a ride app.|وقف من فضلك، هنزل وأطلب أوبر.","وقف من فضلك، هنزل. أنا هطلب أوبر."]];
+function build(){city.innerHTML=C.map((c,i)=>`<option value=${i}>${T(c[0])}</option>`).join('');city.value=localStorage.c||0;item.innerHTML=I.map((x,i)=>`<option value=${i}>${T(x[0])}</option>`).join('');
+$('scams').innerHTML=S.map(s=>`<div class=card><h3>${T(s[0])}</h3><div class=sub>${T(s[1])}</div><div class=say><span>${T(s[2])}</span><button class=g onclick="speak('${s[4]}')">🔊</button></div></div>`).join('');
+$('ride').innerHTML=['Use Uber, Careem or inDrive and see the price before riding.|استخدم أوبر أو كريم أو inDrive وشوف السعر قبل ما تركب.','Uber is not listed in Luxor, Aswan or Sharm; inDrive is.|أوبر مش متاح في الأقصر وأسوان وشرم، استخدم inDrive.','White taxi: agree the price before moving, or ask for the meter.|تاكسي أبيض: اتفق على السعر قبل الحركة أو اطلب العداد.'].map(x=>`<div class=pill style="display:block;border-radius:10px;margin:6px 0;padding:8px">${T(x)}</div>`).join('')}
+async function wx(){const c=C[city.value];localStorage.c=city.value;$('wxo').innerHTML='…';try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${c[1]}&longitude=${c[2]}&current=temperature_2m,precipitation,wind_speed_10m&daily=precipitation_sum,temperature_2m_max&forecast_days=3&timezone=Africa%2FCairo`);const j=await r.json();const t=j.current.temperature_2m,w=j.current.wind_speed_10m,p=Math.max(...j.daily.precipitation_sum),mx=Math.max(...j.daily.temperature_2m_max);let a=[];if(mx>=38)a.push(['bad',L=='en'?`Heat up to ${mx}°C in 3 days: drink water, avoid midday sun`:`حر لحد ${mx}° خلال 3 أيام: اشرب ميه وتجنب الظهيرة`]);if(p>=5)a.push(['bad',L=='en'?`Heavy rain expected (${p} mm): flood risk in low streets`:`مطر غزير متوقع (${p} مم): خطر تجمع مية في الشوارع المنخفضة`]);if(w>=40)a.push(['warn',L=='en'?`Strong wind ${w} km/h`:`رياح قوية ${w} كم/س`]);if(!a.length)a.push(['ok',T('No alert for the next 3 days|مفيش تنبيه للـ3 أيام الجاية')]);
+$('wxo').innerHTML=`<div class=big>${Math.round(t)}°C</div><div class=sub>${T('Wind|الرياح')} ${w} km/h · ${T('3-day max|أقصى 3 أيام')} ${mx}°C · ${T('rain|مطر')} ${p} mm</div>`+a.map(x=>`<div class="v ${x[0]}">${x[1]}</div>`).join('')}catch(e){$('wxo').innerHTML=`<div class="v warn">${T('No connection. Weather needs internet.|مفيش نت. الطقس محتاج انترنت.')}</div>`}}
+function R(){return JSON.parse(localStorage.r||'[]')}
+function rep(k){const r=R();r.unshift({k,c:city.value,t:Date.now()});localStorage.r=JSON.stringify(r.slice(0,30));reps()}
+const RL={water:'💧 Water cut|💧 المية قاطعة',flood:'🌧️ Flooding|🌧️ مية في الشارع',power:'⚡ Power cut|⚡ الكهربا قاطعة',traffic:'🚗 Gridlock|🚗 زحمة خانقة'};
+function reps(){const r=R().filter(x=>x.c==city.value);$('reps').innerHTML=r.length?r.slice(0,4).map(x=>`<span class=pill>${T(RL[x.k])} · ${new Date(x.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>`).join(''):`<div class=sub>${T('No reports yet for this area.|لسه مفيش بلاغات للمنطقة دي.')}</div>`}
+function fx(){const q=+quote.value;if(!q){res.innerHTML='';return}const x=I[item.value],d=q/x[1],pc=Math.round((d-1)*100);let c='ok',t=T('Fair price|سعر معقول');if(d>1.15){c='bad';t=L=='en'?`Above official by ${pc}%. Likely a middleman`:`أعلى من الرسمي بـ${pc}%. غالبا وسيط`}else if(d>1.02){c='warn';t=T('A bit above official|فوق الرسمي شوية')}res.innerHTML=`<div class="v ${c}">${t}<div class=src>${T('Reference|المرجع')}: ${x[1]} EGP · ${x[2]}<br>${T('Prices change. Check the official site.|الأسعار بتتغير. اتأكد من الموقع الرسمي.')}</div></div>`}
+function P(){return JSON.parse(localStorage.p||'{}')}
+function addp(){const v=+pp.value;if(!v)return;const p=P(),k=item.value;(p[k]=p[k]||[]).push(v);localStorage.p=JSON.stringify(p);pp.value='';med()}
+function med(){const a=(P()[item.value]||[]).slice().sort((x,y)=>x-y);$('med').innerHTML=a.length?`<div class=sub>${T('Community median (this phone)|وسيط المجتمع (الموبايل ده)')}: <b>${a[Math.floor(a.length/2)]} EGP</b> · ${a.length} ${T('reports|بلاغ')}</div>`:`<div class=sub>${T('No reports yet.|لسه مفيش أسعار.')}</div>`}
+function metro(){const n=+st.value;if(!n||n<1||n>39){mres.innerHTML='';return}const f=n<=9?10:n<=16?12:n<=23?15:20;mres.innerHTML=`<div class="v ok">${f} EGP<div class=src>${T('Public ticket. Seniors 60+, students and disabled pay less.|تذكرة عامة. كبار السن والطلبة وذوي الإعاقة بيدفعوا أقل.')}</div></div>`}
+function speak(t){if(!window.speechSynthesis){alert(t);return}const u=new SpeechSynthesisUtterance(t);u.lang='ar-EG';speechSynthesis.cancel();speechSynthesis.speak(u)}
+function go(n,a){document.querySelectorAll('section').forEach((s,i)=>s.classList.toggle('on',i==n));document.querySelectorAll('nav a').forEach(x=>x.classList.remove('on'));a.classList.add('on');scrollTo(0,0)}
+item.addEventListener('change',med);if(location.hash){const n=+location.hash.slice(1);go(n,document.querySelectorAll('nav a')[n])}if(location.search.includes('en')){L='en'}ap();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+</script></body></html>
