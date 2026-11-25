@@ -73,3 +73,16 @@ OSM ODbL (attributed) · Open-Meteo CC BY 4.0 · USGS/Aladhan/Nager/open.er-api 
 - Placed along the real OSM Cairo road network: lights every ~22 m alternating sides, palms every ~34 m, signs/lights at detected intersections. Small pole colliders; placement skips building footprints.
 - Caps for mobile: 100 lights, 110 palms, 22 intersection props.
 - Honesty note: prop placement is algorithmic along road edges, not surveyed real-world positions.
+
+## Stage 9: Real CC0 vehicles + drivable taxi (v33) - live
+- Kenney Car Kit 3.1 (CC0) GLBs via jsDelivr: taxi, sedan, SUV, van, delivery, truck, police, ambulance.
+- Weighted traffic mix of 14 vehicles driving the real OSM Cairo street network; peds and cars share roads.
+- Player can enter/exit the yellow-white taxi and drive it (WASD/arrows + touch buttons); drive-facing verified live.
+- Box-geometry fallback if a GLB fails to load.
+- Honesty note: stylized low-poly vehicles; no traffic signals obeyed, no physics engine (arcade driving).
+
+## Stage 10: Minimap (v34) - live
+- Circular minimap (148 px) under the mission pill, prerendered from the real OSM road data (cairo-roads.js): 391 ways, width/color by road class, gold ring border in the NILORA palette.
+- Live markers (redrawn ~4 Hz): player as a green heading arrow (red when driving the taxi), discovery landmarks as gold dots (dim green once found).
+- Zero network cost: map is drawn once to an offscreen canvas at boot from local road data.
+- Honesty note: map covers the loaded downtown block; it does not stream new tiles as you leave the area.
