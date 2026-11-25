@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a1330">
+<title>NILORA Lite</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0a1330;--card:#111c3f;--line:#22305f;--gold:#d9b45b;--txt:#f2f4fa;--mut:#8e9ac0}
+:root[data-t=light]{--bg:#f6f1e6;--card:#fffdf8;--line:#e4dac3;--gold:#a8791a;--txt:#1d2540;--mut:#7a7466}
+nav{background:var(--bg)!important}.chips{display:flex;gap:8px;overflow:auto;padding:2px 0 8px}.chips button{white-space:nowrap;background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:999px;padding:8px 14px;font-size:14px}.set{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif}
+#app{max-width:520px;margin:0 auto;height:100%;display:flex;flex-direction:column}
+header{padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
+header b{letter-spacing:.2em;color:var(--gold);font-size:15px}
+header small{color:var(--mut)}
+main{flex:1;overflow:auto;padding:0 16px 16px}
+.langs{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+select{flex:1;background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:14px;padding:12px;font-size:16px}
+.swap{background:var(--card);border:1px solid var(--line);color:var(--gold);border-radius:50%;width:44px;height:44px;font-size:18px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
+textarea{width:100%;min-height:90px;background:transparent;border:0;color:var(--txt);font-size:20px;resize:none;outline:none;font-family:inherit}
+.out{min-height:90px;font-size:22px;color:var(--gold);white-space:pre-wrap}
+.row{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+.ic{background:var(--bg);border:1px solid var(--line);color:var(--txt);border-radius:12px;padding:8px 12px;font-size:15px}
+.mic{display:block;margin:10px auto;width:84px;height:84px;border-radius:50%;border:0;background:linear-gradient(145deg,#e8c670,#b8902f);color:#1a1a1a;font-size:34px;box-shadow:0 6px 24px #d9b45b44}
+.mic.on{animation:p 1s infinite;background:linear-gradient(145deg,#ff8a7a,#c0392b)}
+@keyframes p{50%{transform:scale(1.08)}}
+.hint{color:var(--mut);text-align:center;font-size:13px;min-height:18px}
+.ph{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.ph:last-child{border:0}.ph div:first-child{font-size:16px}.ph div:last-child{color:var(--gold);font-size:16px;text-align:right}
+nav{display:flex;border-top:1px solid var(--line);background:#0a1330;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;border:0;color:var(--mut);padding:10px 0 12px;font-size:12px}
+nav button span{display:block;font-size:22px}
+nav button.on{color:var(--gold)}
+.hist{padding:10px 0;border-bottom:1px solid var(--line)}.hist small{color:var(--mut)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+<header><b>NILORA ☥</b><small id="net"></small></header>
+<main>
+<section id="tr">
+ <div class="langs"><select id="from"></select><button class="swap" id="swap">⇄</button><select id="to"></select></div>
+ <div class="box"><textarea id="src" placeholder="Type or tap the mic…"></textarea><div class="row"><button class="ic" id="clr">✕</button></div></div>
+ <div class="box"><div class="out" id="out"></div><div class="row"><button class="ic" id="say">🔊</button><button class="ic" id="copy">⧉</button></div></div>
+ <div class="chips" id="chips"></div>
+ <button class="mic" id="mic">🎤</button>
+ <div class="hint" id="hint"></div>
+</section>
+<section id="hs" hidden><div class="box" id="hsl"></div></section>
+<section id="st" hidden><div class="box"><div class="set"><span>Theme</span><button class="ic" id="th">Dark / Light</button></div><div class="set"><span>Clear history</span><button class="ic" id="ch">Clear</button></div><div class="set"><span>Voice replies</span><button class="ic" id="vr">On</button></div><div class="hint" style="margin-top:12px">NILORA Lite. Translation needs a connection, quick phrases work offline.</div></div></section>
+</main>
+<nav>
+ <button id="n1" class="on"><span>🌐</span>Translate</button>
+ <button id="n2"><span>🕘</span>History</button>
+ <button id="n3"><span>⚙️</span>Settings</button>
+</nav>
+</div>
+<script>
+(function(){
+var L=[['en','English','en-US'],['ar','العربية (مصر)','ar-EG'],['fr','Français','fr-FR'],['ru','Русский','ru-RU']];
+var $=function(i){return document.getElementById(i)};
+var from=$('from'),to=$('to'),src=$('src'),out=$('out'),hint=$('hint');
+L.forEach(function(l){from.add(new Option(l[1],l[0]));to.add(new Option(l[1],l[0]))});
+from.value=localStorage.getItem('nl.from')||'ar';to.value=localStorage.getItem('nl.to')||'en';
+var PH={ // offline phrasebook (EN source)
+ 'Hello':{ar:'أهلاً',fr:'Bonjour',ru:'Здравствуйте'},
+ 'Thank you':{ar:'شكراً',fr:'Merci',ru:'Спасибо'},
+ 'How much is this?':{ar:'بكام ده؟',fr:'Combien ça coûte ?',ru:'Сколько это стоит?'},
+ 'Where is the toilet?':{ar:'الحمام فين؟',fr:'Où sont les toilettes ?',ru:'Где туалет?'},
+ 'I need help':{ar:'محتاج مساعدة',fr:"J'ai besoin d'aide",ru:'Мне нужна помощь'},
+ 'Where is the metro station?':{ar:'محطة المترو فين؟',fr:'Où est la station de métro ?',ru:'Где станция метро?'},
+ 'Please go to this address':{ar:'من فضلك وصلني للعنوان ده',fr:'Allez à cette adresse, s\'il vous plaît',ru:'Отвезите меня по этому адресу'},
+ 'Too expensive':{ar:'غالي أوي',fr:'Trop cher',ru:'Слишком дорого'},
+ 'I do not understand':{ar:'مش فاهم',fr:'Je ne comprends pas',ru:'Я не понимаю'},
+ 'Water, please':{ar:'مية لو سمحت',fr:"De l'eau, s'il vous plaît",ru:'Воды, пожалуйста'},
+ 'Do you speak English?':{ar:'بتتكلم إنجليزي؟',fr:'Parlez-vous anglais ?',ru:'Вы говорите по-английски?'},
+ 'Call the police':{ar:'اتصل بالشرطة',fr:'Appelez la police',ru:'Вызовите полицию'}
+};
+function tab(n){['tr','hs','st'].forEach(function(x,i){$(x).hidden=(i!==n);$('n'+(i+1)).className=i===n?'on':''});if(n===1)hist()}
+$('n1').onclick=function(){tab(0)};$('n2').onclick=function(){tab(1)};$('n3').onclick=function(){tab(2)};
+var theme=localStorage.getItem('nl.theme')||'dark';function ap(){document.documentElement.setAttribute('data-t',theme)}ap();
+$('th').onclick=function(){theme=theme==='dark'?'light':'dark';localStorage.setItem('nl.theme',theme);ap()};
+$('ch').onclick=function(){H=[];localStorage.removeItem('nl.hist');hist()};
+var voice=localStorage.getItem('nl.voice')!=='off';$('vr').textContent=voice?'On':'Off';
+$('vr').onclick=function(){voice=!voice;localStorage.setItem('nl.voice',voice?'on':'off');$('vr').textContent=voice?'On':'Off'};
+function rtl(){out.style.direction=to.value==='ar'?'rtl':'ltr';src.style.direction=from.value==='ar'?'rtl':'ltr'}
+var H=JSON.parse(localStorage.getItem('nl.hist')||'[]');
+function save(a,b){H.unshift({a:a,b:b,f:from.value,t:to.value});H=H.slice(0,30);localStorage.setItem('nl.hist',JSON.stringify(H))}
+var tm=null,seq=0;
+function translate(){
+ rtl();localStorage.setItem('nl.from',from.value);localStorage.setItem('nl.to',to.value);
+ var q=src.value.trim();if(!q){out.textContent='';hint.textContent='';return}
+ if(from.value===to.value){out.textContent=q;return}
+ var my=++seq;hint.textContent='…';
+ // offline phrasebook first (exact match from English)
+ if(from.value==='en'&&PH[q]&&PH[q][to.value]){out.textContent=PH[q][to.value];hint.textContent='offline';return}
+ var u='https://api.mymemory.translated.net/get?q='+encodeURIComponent(q)+'&langpair='+from.value+'|'+to.value;
+ fetch(u).then(function(r){return r.json()}).then(function(j){
+  if(my!==seq)return;var t=j&&j.responseData&&j.responseData.translatedText;
+  if(!t||/MYMEMORY WARNING/i.test(t)){out.textContent='';hint.textContent='Translation limit reached or offline. Try the Phrases tab.';return}
+  out.textContent=t.replace(/&#39;/g,"'").replace(/&quot;/g,'"');hint.textContent='';save(q,out.textContent);
+ }).catch(function(){if(my===seq){out.textContent='';hint.textContent='No connection. Try the Phrases tab (works offline).'}});
+}
+src.addEventListener('input',function(){clearTimeout(tm);tm=setTimeout(translate,450)});
+from.onchange=to.onchange=translate;
+$('swap').onclick=function(){var f=from.value;from.value=to.value;to.value=f;if(out.textContent){src.value=out.textContent}translate()};
+$('clr').onclick=function(){src.value='';out.textContent='';hint.textContent=''};
+function code(c){for(var i=0;i<L.length;i++)if(L[i][0]===c)return L[i][2]}
+function speak(t,c){if(!voice||!window.speechSynthesis||!t)return;var u=new SpeechSynthesisUtterance(t);u.lang=code(c);speechSynthesis.cancel();speechSynthesis.speak(u)}
+$('say').onclick=function(){var v=voice;voice=true;speak(out.textContent,to.value);voice=v};
+$('copy').onclick=function(){if(navigator.clipboard)navigator.clipboard.writeText(out.textContent);hint.textContent='Copied'};
+var SR=window.SpeechRecognition||window.webkitSpeechRecognition,rec=null;
+$('mic').onclick=function(){
+ if(!SR){hint.textContent='Voice input is not supported in this browser. Use Chrome or Safari, or type.';return}
+ if(rec){rec.stop();return}
+ rec=new SR();rec.lang=code(from.value);rec.interimResults=true;rec.continuous=false;
+ $('mic').className='mic on';hint.textContent='Listening…';
+ rec.onresult=function(e){var s='';for(var i=0;i<e.results.length;i++)s+=e.results[i][0].transcript;src.value=s;clearTimeout(tm);tm=setTimeout(translate,200)};
+ rec.onerror=function(e){hint.textContent='Mic: '+e.error};
+ rec.onend=function(){rec=null;$('mic').className='mic';if(src.value.trim()){translate();setTimeout(function(){speak(out.textContent,to.value)},900)}};
+ try{rec.start()}catch(e){rec=null;$('mic').className='mic'}
+};
+function chips(){var h='';Object.keys(PH).forEach(function(k){h+='<button data-k="'+k.replace(/"/g,'&quot;')+'">'+k+'</button>'});$('chips').innerHTML=h;[].forEach.call($('chips').children,function(el){el.onclick=function(){from.value='en';if(to.value==='en')to.value='ar';src.value=el.getAttribute('data-k');translate();setTimeout(function(){speak(out.textContent,to.value)},300)}})}
+chips();
+function hist(){$('hsl').innerHTML=H.length?H.map(function(x){return '<div class="hist"><small>'+x.f+' → '+x.t+'</small><div>'+esc(x.a)+'</div><div style="color:var(--gold)">'+esc(x.b)+'</div></div>'}).join(''):'<div class="hint">Nothing yet.</div>'}
+function esc(s){return String(s).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})}
+$('net').textContent=navigator.onLine?'':'offline';window.addEventListener('online',function(){$('net').textContent=''});window.addEventListener('offline',function(){$('net').textContent='offline'});
+rtl();
+window.NiloraLite={translate:translate,setText:function(t){src.value=t;translate()}};
+})();
+</script>
+</body>
+</html>
