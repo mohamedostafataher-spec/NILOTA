@@ -871,10 +871,10 @@
     const bones = {};
     mesh.traverse((o) => { bones[o.name] = o; });
     const set = (n, sx, sy, sz) => { if (bones[n]) bones[n].scale.set(sx, sy, sz); };
-    set('head', 0.82, 0.82, 0.82);
-    set('spine', 1, 1.06, 1);
-    set('upperleg.l', 1, 1.22, 1); set('upperleg.r', 1, 1.22, 1);
-    set('lowerleg.l', 1, 1.18, 1); set('lowerleg.r', 1, 1.18, 1);
+    set('head', 0.74, 0.74, 0.74);
+    set('spine', 1, 1.08, 1);
+    set('upperleg.l', 1, 1.38, 1); set('upperleg.r', 1, 1.38, 1);
+    set('lowerleg.l', 1, 1.28, 1); set('lowerleg.r', 1, 1.28, 1);
     mesh.updateMatrixWorld(true);
     if (bones.root && bones['foot.l'] && bones['foot.r']) {
       const a = new THREE.Vector3(), b = new THREE.Vector3();
