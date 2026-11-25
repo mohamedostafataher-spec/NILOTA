@@ -52,7 +52,7 @@ nav button.on{color:var(--gold)}
 </section>
 <section id="sit" hidden><div class="chips" id="cats"></div><div class="box" id="sitl"></div><div class="hint">Tap a card to show it full screen, in the language of the person you are talking to (the right-hand language above).</div></section>
 <section id="hs" hidden><div class="box" id="hsl"></div></section>
-<section id="st" hidden><div class="box"><div class="set"><span>Theme</span><button class="ic" id="th">Dark / Light</button></div><div class="set"><span>Clear history</span><button class="ic" id="ch">Clear</button></div><div class="set"><span>Voice replies</span><button class="ic" id="vr">On</button></div><div class="hint" style="margin-top:12px">NILORA Lite. Translation needs a connection, quick phrases work offline.</div></div></section>
+<section id="st" hidden><div class="box"><div class="set"><span>Theme</span><button class="ic" id="th">Dark / Light</button></div><div class="set"><span>Egyptian Arabic style</span><button class="ic" id="eg">On</button></div><div class="set"><span>Clear history</span><button class="ic" id="ch">Clear</button></div><div class="set"><span>Voice replies</span><button class="ic" id="vr">On</button></div><div class="hint" style="margin-top:12px">NILORA Lite. Translation needs a connection, quick phrases work offline.</div></div></section>
 </main>
 <div id="show" hidden style="position:fixed;inset:0;background:var(--bg);z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center"><div id="sh1" style="font-size:38px;color:var(--gold);line-height:1.4;font-weight:700"></div><div id="sh2" style="font-size:18px;color:var(--mut);margin-top:14px"></div><div id="sh3" style="font-size:15px;color:var(--mut);margin-top:6px"></div><button class="ic" id="shs" style="margin-top:28px;font-size:18px;padding:12px 22px">🔊 Play</button><button class="ic" id="shx" style="margin-top:12px">Close</button></div>
 <nav>
@@ -95,6 +95,20 @@ function rtl(){out.style.direction=to.value==='ar'?'rtl':'ltr';src.style.directi
 var H=JSON.parse(localStorage.getItem('nl.hist')||'[]');
 function save(a,b){H.unshift({a:a,b:b,f:from.value,t:to.value});H=H.slice(0,30);localStorage.setItem('nl.hist',JSON.stringify(H))}
 var tm=null,seq=0;
+
+var EG=[['لا أعرف','معرفش'],['لا أفهم','مش فاهم'],['لا يوجد','مفيش'],['لا أستطيع','مش قادر'],['من فضلك','لو سمحت'],['من فضلك','لو سمحت'],['ماذا','إيه'],['أين','فين'],['كيف','إزاي'],['لماذا','ليه'],['متى','إمتى'],['كم','كام'],['بكم','بكام'],['الآن','دلوقتي'],['أريد','عايز'],['أرغب في','عايز'],['أود','عايز'],['نريد','عايزين'],['هذا','ده'],['هذه','دي'],['هؤلاء','دول'],['الذي','اللي'],['التي','اللي'],['ليس','مش'],['لست','مش'],['ليست','مش'],['جدا','أوي'],['جداً','أوي'],['كثيرا','كتير'],['كثير','كتير'],['نعم','أيوه'],['ماء','مية'],['الماء','المية'],['المرحاض','الحمّام'],['دورة المياه','الحمّام'],['الآن','دلوقتي'],['غدا','بكرة'],['غداً','بكرة'],['اليوم','النهاردة'],['أنا أحتاج','أنا محتاج'],['أحتاج','محتاج'],['تريد','عايز'],['يمكنني','أقدر'],['يمكنك','تقدر'],['هل يمكنك','ممكن'],['هل يمكن','ممكن'],['ماذا تريد','عايز إيه'],['شيء','حاجة'],['أي شيء','أي حاجة'],['الان','دلوقتي'],['أيضا','كمان'],['أيضاً','كمان'],['فقط','بس'],['لكن','بس'],['حسنا','تمام'],['حسناً','تمام'],['جيد','كويس'],['رائع','جميل'],['سيارة الأجرة','التاكسي'],['حافلة','أوتوبيس'],['قطار الأنفاق','المترو'],['الطبيب','الدكتور'],['طبيب','دكتور'],['الشرطة','الشرطة'],['منزل','بيت'],['المنزل','البيت'],['ذهب','راح'],['أذهب','أروح'],['سأذهب','هروح'],['إلى أين','رايح فين'],['ماذا حدث','إيه اللي حصل'],['مرحبا','أهلاً'],['مرحباً','أهلاً'],['شكرا','شكراً'],['أنت','إنت'],['أنتِ','إنتي'],['نحن','إحنا'],['لديك','عندك'],['لدي','عندي'],['لديه','عنده'],['لدينا','عندنا'],['أمامي','قدامي'],['الآن','دلوقتي']]
+EG.sort(function(a,b){return b[0].length-a[0].length});
+function egy(t){if(!t)return t;t=t.replace(/(^|[\s،؟?.!,])هل\s+(?!يمكن)/g,'$1');
+ var d='(^|[\\s،؟?.!,])',e='(?=$|[\\s،؟?.!,])';
+ EG.forEach(function(p){try{t=t.replace(new RegExp(d+p[0].trim().replace(/ /g,'\\s+')+e,'g'),function(m,a){return a+p[1]})}catch(x){}});
+ t=t.replace(/(^|\s)سوف\s+أ/g,'$1ه').replace(/(^|\s)سوف\s+/g,'$1ه');
+ return t}
+var egOn=localStorage.getItem('nl.eg')!=='off';setTimeout(function(){var b=$('eg');b.textContent=egOn?'On':'Off';b.onclick=function(){egOn=!egOn;localStorage.setItem('nl.eg',egOn?'on':'off');b.textContent=egOn?'On':'Off'}},0);
+var arVoice=null;
+function pickVoice(){var vs=(window.speechSynthesis&&speechSynthesis.getVoices())||[];var a=vs.filter(function(v){return /^ar/i.test(v.lang)});
+ arVoice=a.filter(function(v){return /EG/i.test(v.lang.replace('_','-'))})[0]||null;arVoiceAny=a[0]||null;return arVoice}
+var arVoiceAny=null;
+if(window.speechSynthesis){speechSynthesis.onvoiceschanged=pickVoice;pickVoice()}
 function translate(){
  rtl();localStorage.setItem('nl.from',from.value);localStorage.setItem('nl.to',to.value);
  var q=src.value.trim();if(!q){out.textContent='';hint.textContent='';return}
@@ -106,7 +120,7 @@ function translate(){
  fetch(u).then(function(r){return r.json()}).then(function(j){
   if(my!==seq)return;var t=j&&j.responseData&&j.responseData.translatedText;
   if(!t||/MYMEMORY WARNING/i.test(t)){out.textContent='';hint.textContent='Translation limit reached or offline. Try the Phrases tab.';return}
-  out.textContent=t.replace(/&#39;/g,"'").replace(/&quot;/g,'"');hint.textContent='';save(q,out.textContent);
+  t=t.replace(/&#39;/g,"'").replace(/&quot;/g,'"');var raw=t;if(to.value==='ar'&&egOn)t=egy(t);out.textContent=t;hint.textContent=(to.value==='ar'&&egOn)?'Egyptian style (rule-based, from formal Arabic)':'';save(q,out.textContent);
  }).catch(function(){if(my===seq){out.textContent='';hint.textContent='No connection. Try the Phrases tab (works offline).'}});
 }
 src.addEventListener('input',function(){clearTimeout(tm);tm=setTimeout(translate,450)});
@@ -114,7 +128,7 @@ from.onchange=to.onchange=translate;
 $('swap').onclick=function(){var f=from.value;from.value=to.value;to.value=f;if(out.textContent){src.value=out.textContent}translate()};
 $('clr').onclick=function(){src.value='';out.textContent='';hint.textContent=''};
 function code(c){for(var i=0;i<L.length;i++)if(L[i][0]===c)return L[i][2]}
-function speak(t,c){if(!voice||!window.speechSynthesis||!t)return;var u=new SpeechSynthesisUtterance(t);u.lang=code(c);speechSynthesis.cancel();speechSynthesis.speak(u)}
+function speak(t,c){if(!voice||!window.speechSynthesis||!t)return;var u=new SpeechSynthesisUtterance(t);u.lang=code(c);if(c==='ar'){pickVoice();var vv=arVoice||arVoiceAny;if(vv){u.voice=vv;u.lang=vv.lang}}u.rate=0.95;speechSynthesis.cancel();speechSynthesis.speak(u)}
 $('say').onclick=function(){var v=voice;voice=true;speak(out.textContent,to.value);voice=v};
 $('copy').onclick=function(){if(navigator.clipboard)navigator.clipboard.writeText(out.textContent);hint.textContent='Copied'};
 
