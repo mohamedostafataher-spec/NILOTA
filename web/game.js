@@ -408,6 +408,8 @@
     async start(appEl) {
       if (Game.running) return;
       Game.running = true;
+      const intro = document.getElementById('intro');
+      if (intro) intro.remove();
       const host = document.createElement('div');
       host.id = 'gcityHost';
       host.innerHTML = '<canvas id="gcity"></canvas>';
