@@ -122,3 +122,13 @@ OSM ODbL (attributed) · Open-Meteo CC BY 4.0 · USGS/Aladhan/Nager/open.er-api 
 
 ## Egypt-wide vision (Nov 25)
 - All of Egypt, realistic, city by city (Alexandria first, then Luxor, Aswan, more), each city with real OSM streets and landmarks, shipped as its own stage after Cairo polish - same keyless pipeline as Cairo.
+
+## Minor roads thinner (v40) - live
+- Minor/residential roads in the Cairo game now render thinner (widths 2.6/4.6/7/10 by road class instead of 4/6/8/10) so the dense downtown web reads cleaner at street level and on the minimap.
+
+## Ta'aruf + Traveling Postcards, keyless web version (v41) - live
+- Mohamed confirmed both mechanics (Nov 25): this is the local-first web version of the approved direction.
+- New "Travelers & connections" screen (#/friends): Traveler of the Day gold card (rotates daily), 6 sample travelers (3 Egyptian: Nadia/Cairo, Yara/Alexandria, Omar/Luxor; plus Claire/Paris, Kenji/Kyoto, Marco/Rome), languages + intro note per traveler, Follow buttons persisted in localStorage, "your city" badge when a traveler matches a stamped/saved/visited city, Sample badge + honest note that real online matching needs accounts.
+- Traveling postcards: a sent postcard now gains one journey hop per day (deterministic city path, max 4) and shows "traveling - last carried by <sample traveler>"; found sample postcards already had journeys.
+- Linked from the home hub cards; grouped under the Journey tab in the bottom nav. All 4 languages (AR/EN/FR/RU).
+- Incident (fixed same hour): the first v41 app.js commit duplicated file content due to a GitHub web-editor fill quirk; the file was replaced with the correct content ~10 minutes later. Live site impact window was brief.
