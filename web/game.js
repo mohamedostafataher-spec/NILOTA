@@ -166,6 +166,97 @@
     },
   };
 
+  /* ---------- Assets: rigged human characters (KayKit Adventurers, CC0) ---------- */
+  const Assets = {
+    lib: {}, // key -> {scene, animations}
+    CDN: 'https://cdn.jsdelivr.net/gh/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/addons/kaykit_character_pack_adventures/Characters/gltf/',
+    FILES: { player: 'Rogue_Hooded.glb', ped_a: 'Knight.glb', ped_b: 'Mage.glb' },
+    load(key) {
+      return new Promise((resolve) => {
+        const urls = ['./game/assets/' + key + '.glb', Assets.CDN + Assets.FILES[key]];
+        const tryNext = (i) => {
+          if (i >= urls.length) return resolve(false);
+          try {
+            new THREE.GLTFLoader().load(urls[i],
+              (g) => { Assets.lib[key] = g; resolve(true); },
+              undefined,
+              () => tryNext(i + 1));
+          } catch (e) { tryNext(i + 1); }
+        };
+        tryNext(0);
+      });
+    },
+    loadAll() { return Promise.all(['player', 'ped_a', 'ped_b'].map((k) => Assets.load(k))); },
+    clone(key) {
+      const src = Assets.lib[key];
+      return src ? THREE.SkeletonUtils.clone(src.scene) : null;
+    },
+    anims(key) { return Assets.lib[key] ? Assets.lib[key].animations : []; },
+  };
+
+  /* Animated human wrapper: mesh + mixer + simple state machine. */
+  function makeHuman(key) {
+    const mesh = Assets.clone(key);
+    if (!mesh) return null;
+    const mixer = new THREE.AnimationMixer(mesh);
+    const clips = {};
+    Assets.anims(key).forEach((c) => { clips[c.name] = c; });
+    let current = null;
+    return {
+      mesh, mixer,
+      play(name, fade) {
+        if (current === name || !clips[name]) return;
+        const next = mixer.clipAction(clips[name]);
+        next.reset().setLoop(THREE.LoopRepeat).fadeIn(fade || 0.15).play();
+        if (current && clips[current]) mixer.clipAction(clips[current]).fadeOut(fade || 0.15);
+        current = name;
+      },
+      currentName: () => current,
+    };
+  }
+
+  /* ---------- Pedestrians: ambient walkers on the sidewalks ---------- */
+  const Pedestrians = {
+    list: [],
+    build(scene) {
+      const half = CITY.size / 2, step = CITY.block + CITY.road;
+      const lanes = [];
+      for (let p = -half + step / 2; p < half; p += step) lanes.push(p);
+      let seed = 13;
+      const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+      for (let i = 0; i < 10; i++) {
+        const key = i % 2 === 0 ? 'ped_a' : 'ped_b';
+        const h = makeHuman(key);
+        if (!h) break;
+        const horizontal = rnd() > 0.5;
+        const lane = lanes[Math.floor(rnd() * lanes.length)] + (rnd() > 0.5 ? CITY.road / 2 - 1.5 : -(CITY.road / 2 - 1.5));
+        const speed = (2 + rnd() * 2) * (rnd() > 0.5 ? 1 : -1);
+        const pos = (rnd() - 0.5) * CITY.size;
+        h.mesh.position.y = 0;
+        scene.add(h.mesh);
+        h.play('Walking_A', 0);
+        h.mixer.update(rnd() * 2); // desync strides
+        Pedestrians.list.push({ h, horizontal, lane, pos, speed });
+      }
+    },
+    update(dt) {
+      const lim = CITY.size / 2 + 4;
+      Pedestrians.list.forEach((p) => {
+        p.pos += p.speed * dt;
+        if (p.pos > lim) p.pos = -lim;
+        if (p.pos < -lim) p.pos = lim;
+        if (p.horizontal) {
+          p.h.mesh.position.set(p.pos, 0, p.lane);
+          p.h.mesh.rotation.y = p.speed > 0 ? Math.PI / 2 : -Math.PI / 2;
+        } else {
+          p.h.mesh.position.set(p.lane, 0, p.pos);
+          p.h.mesh.rotation.y = p.speed > 0 ? 0 : Math.PI;
+        }
+        p.h.mixer.update(dt);
+      });
+    },
+  };
+
   /* ---------- Vehicles: ambient street traffic (non-drivable) ---------- */
   const Vehicles = {
     cars: [],
@@ -235,15 +326,19 @@
     SPEED_WALK: 7, SPEED_RUN: 13, JUMP: 9, GRAV: 24,
     build(scene) {
       const g = new THREE.Group();
-      const body = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.55, 0.55, 1.5, 10),
-        new THREE.MeshLambertMaterial({ color: 0xd4af37 }));
-      body.position.y = 1.05;
-      const head = new THREE.Mesh(
-        new THREE.SphereGeometry(0.45, 12, 10),
-        new THREE.MeshLambertMaterial({ color: 0xf2d98c }));
-      head.position.y = 2.15;
-      g.add(body); g.add(head);
+      Player.human = makeHuman('player');
+      if (Player.human) {
+        Player.human.mesh.position.y = 0;
+        g.add(Player.human.mesh);
+        Player.human.play('Idle', 0);
+      } else {
+        // fallback capsule if the GLB failed to load
+        const body = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.55, 0.55, 1.5, 10),
+          new THREE.MeshLambertMaterial({ color: 0xd4af37 }));
+        body.position.y = 1.05;
+        g.add(body);
+      }
       scene.add(g);
       Player.mesh = g;
     },
@@ -263,6 +358,12 @@
       if (Input.jumpQueued) {
         if (Player.grounded) { Player.vy = Player.JUMP; Player.grounded = false; }
         Input.jumpQueued = false;
+      }
+      if (Player.human) {
+        if (!Player.grounded) Player.human.play('Jump_Idle');
+        else if (mag > 0.05) Player.human.play(mv.run ? 'Running_A' : 'Walking_A');
+        else Player.human.play('Idle');
+        Player.human.mixer.update(dt);
       }
       Player.vy -= Player.GRAV * dt;
       Player.y += Player.vy * dt;
@@ -437,8 +538,10 @@
       World.colliders = []; World.landmarks = [];
       World.build(scene);
       Vehicles.cars = []; Vehicles.build(scene);
-      Player.build(scene);
       HUD.mount(host);
+      HUD.toast('⏳ loading city…');
+      await Assets.loadAll();
+      Pedestrians.list = []; Pedestrians.build(scene);
       Input.init(host);
       FollowCam.init(host);
       Game.resize();
@@ -467,6 +570,7 @@
         if (!document.hidden) {
           Player.update(dt, FollowCam.yaw);
           Vehicles.update(dt);
+          Pedestrians.update(dt);
           FollowCam.update(camera);
           Mission.update();
           renderer.render(scene, camera);
@@ -518,6 +622,7 @@
     start: Game.start.bind(Game), stop: Game.stop.bind(Game),
     debug: () => ({ x: Player.x, y: Player.y, z: Player.z, grounded: Player.grounded,
       found: Mission.foundCount(), cars: Vehicles.cars.length,
+      peds: Pedestrians.list.length, anim: Player.human ? Player.human.currentName() : 'capsule',
       collides: (x, z) => World.hit(x, z),
       tp: (x, z) => { Player.x = x; Player.z = z; } }),
   };
