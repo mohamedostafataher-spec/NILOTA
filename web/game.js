@@ -474,7 +474,7 @@
           c.setHex(hex).convertSRGBToLinear(); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
         }
         g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-        o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 });
+        o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0, skinning: !!o.isSkinnedMesh });
       });
     },
     load(key) {
