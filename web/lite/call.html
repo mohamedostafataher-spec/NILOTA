@@ -45,7 +45,7 @@ label{color:var(--mut);font-size:13px;display:block;margin:8px 0 4px}
   <button class="sec" id="join">Join call</button>
  </div>
  <div class="st" id="s0"></div>
- <div class="st" style="font-size:12px">Free public relay: anyone with your code could listen in. Keep it non-sensitive. Speech becomes text on your device, is translated, and read aloud on the other side. No raw audio is sent.</div>
+ <div class="st" style="font-size:12px">Free public relay: anyone with your code could listen in. Keep it non-sensitive. Speech becomes text on your device, is translated, and read aloud on the other side. No raw audio is sent unless you both turn on live voice.</div>
 </section>
 
 <section id="wait" hidden>
@@ -58,7 +58,9 @@ label{color:var(--mut);font-size:13px;display:block;margin:8px 0 4px}
  <div class="st" id="s2"></div>
  <div id="log"></div>
  <div class="row" style="margin-top:8px"><input id="tx" placeholder="Type instead of speaking…"><button class="sec" id="send" style="margin:0;max-width:80px">Send</button></div>
- <div class="row"><button class="sec" id="mute">🎤 Mic on</button></div>
+ <div class="row"><button class="sec" id="mute">🎤 Mic on</button><button class="sec" id="tts">🔊 Read aloud: on</button></div>
+ <button class="sec" id="vbtn">📞 Add live voice (beta)</button>
+ <div class="st" id="vs"></div><audio id="ra" autoplay playsinline></audio>
  <button class="pr red" id="end" style="color:#fff;background:#c0392b">End call</button>
 </section>
 </div>
@@ -73,7 +75,7 @@ function show(id){['setup','wait','live'].forEach(function(x){var e=$(x);e.hidde
 var es,topic,myId=Math.random().toString(36).slice(2,10),stream,rec,recOn=true,speaking=false,myLang,theirLang,alive=false,linked=false,micOk=false;
 var API=function(from,to,q){return fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(q)+'&langpair='+from+'|'+to).then(function(r){return r.json()}).then(function(j){var t=j&&j.responseData&&j.responseData.translatedText;if(!t||/MYMEMORY WARNING/i.test(t))throw 0;return t.replace(/&#39;/g,"'").replace(/&quot;/g,'"')})};
 function add(who,text,sub){var d=document.createElement('div');d.className='m'+(who==='me'?' me':'');var t=document.createElement('div');t.className='t';t.textContent=text;t.dir='auto';d.appendChild(t);if(sub){var s=document.createElement('small');s.textContent=sub;s.dir='auto';d.appendChild(s)}$('log').appendChild(d);$('log').scrollTop=1e9}
-function speak(t,lang){if(!window.speechSynthesis){return}var u=new SpeechSynthesisUtterance(t);u.lang=code(lang);speaking=true;u.onend=u.onerror=function(){setTimeout(function(){speaking=false},400)};speechSynthesis.speak(u)}
+var ttsOn=true;function speak(t,lang){if(!ttsOn||!window.speechSynthesis){return}var u=new SpeechSynthesisUtterance(t);u.lang=code(lang);speaking=true;u.onend=u.onerror=function(){setTimeout(function(){speaking=false},400)};speechSynthesis.speak(u)}
 function mkcode(){var a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',s='';var r=new Uint8Array(8);crypto.getRandomValues(r);for(var i=0;i<8;i++)s+=a[r[i]%a.length];return s}
 function pub(o){o.id=myId;return fetch('https://ntfy.sh/'+topic,{method:'POST',headers:{'Cache':'no'},body:JSON.stringify(o)}).catch(function(){})}
 function open_(c){topic='nilora-call-'+c.toLowerCase();alive=true;
@@ -82,6 +84,7 @@ function open_(c){topic='nilora-call-'+c.toLowerCase();alive=true;
  es.onmessage=function(ev){var m;try{m=JSON.parse(JSON.parse(ev.data).message)}catch(e){return}
   if(!m||m.id===myId)return;
   if(m.t==='hi'){var first=!linked;theirLang=m.lang;linked=true;if(first){pub({t:'hi',lang:myLang});show('live');$('s2').textContent='Connected. Speak in your language.';startRec()}return}
+  if(m.t==='sig'){onSig(m);return}
   if(m.t==='bye'){add('them','(the other person left)');return}
   if(m.t==='say'){var from=m.lang||theirLang||'en';
    var done=function(tr){add('them',tr,m.text);speak(tr,myLang)};
@@ -95,10 +98,40 @@ function startRec(){var SR=window.SpeechRecognition||window.webkitSpeechRecognit
  rec.onend=function(){if(alive&&recOn){try{rec.start()}catch(e){}}};
  try{rec.start()}catch(e){}}
 function out(t){if(!alive||!linked)return;pub({t:'say',text:t,lang:myLang});add('me',t)}
-function end(){if(alive)pub({t:'bye'});alive=false;linked=false;try{rec&&rec.stop()}catch(e){}try{es&&es.close()}catch(e){}$('s0').textContent='Call ended.';show('setup')}
+function end(){if(alive)pub({t:'bye'});try{stopVoice(true)}catch(e){}alive=false;linked=false;try{rec&&rec.stop()}catch(e){}try{es&&es.close()}catch(e){}$('s0').textContent='Call ended.';show('setup')}
 $('create').onclick=function(){myLang=$('lang').value;localStorage.setItem('nl.from',myLang);var c=mkcode();open_(c);$('mycode').textContent=c;show('wait')};
 $('join').onclick=function(){var c=$('jc').value.trim().toUpperCase();if(c.length<8){$('s0').textContent='Enter the 8-letter code.';return}
  myLang=$('lang').value;localStorage.setItem('nl.from',myLang);$('s0').textContent='Connecting…';open_(c)};
+
+/* ---- optional live voice: WebRTC audio, signaling over the same relay ---- */
+var pc=null,pendingOffer=null,vstream=null,icequeue=[],vstate='off';
+var ICE={iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.cloudflare.com:3478'}]};
+function vset(t){$('vs').textContent=t}
+function newPc(){pc=new RTCPeerConnection(ICE);icequeue=[];
+ pc.onicecandidate=function(e){if(e.candidate)pub({t:'sig',k:'ice',c:e.candidate})};
+ pc.ontrack=function(e){$('ra').srcObject=e.streams[0];var p=$('ra').play();if(p&&p.catch)p.catch(function(){})};
+ pc.oniceconnectionstatechange=function(){var st=pc.iceConnectionState;window.__ice=st;
+  if(st==='connected'||st==='completed'){vstate='on';vset('Voice connected.');$('vbtn').textContent='📞 Stop voice'}
+  else if(st==='checking')vset('Connecting voice…');
+  else if(st==='failed'){vset('Voice could not connect (this network blocks direct calls). Text translation still works.');stopVoice(true)}
+  else if(st==='disconnected')vset('Voice dropped…')};
+ return pc}
+function mic(){if(/fakemic=1/.test(location.search)){var ac=new AudioContext(),o=ac.createOscillator(),d=ac.createMediaStreamDestination();o.connect(d);o.start();return Promise.resolve(d.stream)}return navigator.mediaDevices&&navigator.mediaDevices.getUserMedia?navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}):Promise.reject(new Error('nomic'))}
+function startVoice(){if(!linked){vset('Connect first.');return}
+ mic().then(function(s){vstream=s;newPc();s.getTracks().forEach(function(t){pc.addTrack(t,s)});vstate='calling';vset('Calling…');
+  return pc.createOffer().then(function(o){return pc.setLocalDescription(o).then(function(){pub({t:'sig',k:'offer',d:pc.localDescription})})})}).catch(function(e){vset('Voice needs microphone access.');vstate='off'})}
+function acceptVoice(){var off=pendingOffer;pendingOffer=null;
+ mic().then(function(s){vstream=s;newPc();s.getTracks().forEach(function(t){pc.addTrack(t,s)});
+  return pc.setRemoteDescription(off).then(function(){icequeue.splice(0).forEach(function(c){pc.addIceCandidate(c).catch(function(){})});return pc.createAnswer()}).then(function(a){return pc.setLocalDescription(a).then(function(){pub({t:'sig',k:'answer',d:pc.localDescription})})})}).catch(function(){vset('Voice needs microphone access.')})}
+function stopVoice(silent){try{pc&&pc.close()}catch(e){}pc=null;if(vstream)vstream.getTracks().forEach(function(t){t.stop()});vstream=null;vstate='off';$('vbtn').textContent='📞 Add live voice (beta)';if(!silent){vset('');pub({t:'sig',k:'stop'})}}
+function onSig(m){
+ if(m.k==='offer'){pendingOffer=new RTCSessionDescription(m.d);vset('The other person wants voice. Tap the button to accept.');$('vbtn').textContent='📞 Accept voice call';vstate='ringing'}
+ else if(m.k==='answer'&&pc){pc.setRemoteDescription(new RTCSessionDescription(m.d)).then(function(){icequeue.splice(0).forEach(function(c){pc.addIceCandidate(c).catch(function(){})})}).catch(function(){})}
+ else if(m.k==='ice'){var c=new RTCIceCandidate(m.c);if(pc&&pc.remoteDescription)pc.addIceCandidate(c).catch(function(){});else icequeue.push(c)}
+ else if(m.k==='stop'){stopVoice(true);vset('The other person stopped voice.');pendingOffer=null}}
+$('vbtn').onclick=function(){if(vstate==='off')startVoice();else if(vstate==='ringing')acceptVoice();else stopVoice()};
+$('tts').onclick=function(){ttsOn=!ttsOn;$('tts').textContent='🔊 Read aloud: '+(ttsOn?'on':'off');if(!ttsOn&&window.speechSynthesis)speechSynthesis.cancel()};
+window.NiloraVoice={start:startVoice,ice:function(){return window.__ice||null},state:function(){return vstate}};
 $('send').onclick=function(){var v=$('tx').value.trim();if(v){out(v);$('tx').value=''}};
 $('tx').addEventListener('keydown',function(e){if(e.key==='Enter')$('send').onclick()});
 $('mute').onclick=function(){recOn=!recOn;$('mute').textContent=recOn?'🎤 Mic on':'🔇 Mic off';if(recOn&&rec){try{rec.start()}catch(e){}}};
