@@ -116,6 +116,17 @@
         ctx.fillRect(2, 0, 2, h); ctx.fillRect(w - 4, 0, 2, h);
       });
     },
+    asphaltH() {
+      return Tex.make(256, 64, (ctx, w, h) => {
+        ctx.fillStyle = '#232d3f'; ctx.fillRect(0, 0, w, h);
+        Tex.noise(ctx, w, h, 500, 0.25);
+        ctx.fillStyle = '#c8b568';
+        ctx.fillRect(20, h / 2 - 2, 60, 4);
+        ctx.fillRect(140, h / 2 - 2, 60, 4);
+        ctx.fillStyle = 'rgba(200,181,104,0.85)';
+        ctx.fillRect(0, 2, w, 2); ctx.fillRect(0, h - 4, w, 2);
+      });
+    },
     pavement() {
       return Tex.make(128, 128, (ctx, w, h) => {
         ctx.fillStyle = '#1c2942'; ctx.fillRect(0, 0, w, h);
@@ -265,7 +276,7 @@
       const cairoOK = Cairo.build();
       if (cairoOK) {
         // real Cairo streets: textured ribbons + junction discs, buildings along them
-        const asp = Tex.asphalt(); asp.repeat.set(1, 1.5);
+        const asp = Tex.asphaltH(); asp.repeat.set(1, 1);
         const roadMat = new THREE.MeshLambertMaterial({ map: asp });
         Cairo.paths.forEach((p) => {
           for (let i = 1; i < p.pts.length; i++) {
@@ -283,18 +294,26 @@
             g.add(m);
           }
         });
-        // road clearance boxes: no building may touch any street
-        const roadBoxes = [];
+        // road clearance: distance-to-segment, no building may touch any street
+        const segs = [];
         Cairo.paths.forEach((p) => {
           for (let i = 1; i < p.pts.length; i++) {
-            const [x0, z0] = p.pts[i - 1], [x1, z1] = p.pts[i];
-            roadBoxes.push({
-              minX: Math.min(x0, x1) - p.width / 2, maxX: Math.max(x0, x1) + p.width / 2,
-              minZ: Math.min(z0, z1) - p.width / 2, maxZ: Math.max(z0, z1) + p.width / 2,
-            });
+            segs.push({ x0: p.pts[i - 1][0], z0: p.pts[i - 1][1], x1: p.pts[i][0], z1: p.pts[i][1], hw: p.width / 2 });
           }
         });
-        const onRoad = (minX, maxX, minZ, maxZ) => roadBoxes.some((b) => minX < b.maxX && maxX > b.minX && minZ < b.maxZ && maxZ > b.minZ);
+        const roadDist = (x, z) => {
+          let best = 1e9;
+          for (const s of segs) {
+            const dx = s.x1 - s.x0, dz = s.z1 - s.z0;
+            const l2 = dx * dx + dz * dz;
+            let t = l2 ? ((x - s.x0) * dx + (z - s.z0) * dz) / l2 : 0;
+            t = Math.max(0, Math.min(1, t));
+            const px = s.x0 + dx * t, pz = s.z0 + dz * t;
+            const d = Math.hypot(x - px, z - pz) - s.hw;
+            if (d < best) best = d;
+          }
+          return best;
+        };
         // buildings lining the streets
         let placed = 0;
         Cairo.paths.forEach((p) => {
@@ -309,7 +328,7 @@
               const z = at.z + at.dx * off * side;
               if (Math.abs(x) > 190 || Math.abs(z) > 190) continue;
               const minX = x - w / 2 - 0.6, maxX = x + w / 2 + 0.6, minZ = z - d / 2 - 0.6, maxZ = z + d / 2 + 0.6;
-              if (overlaps(minX, maxX, minZ, maxZ) || onRoad(minX, maxX, minZ, maxZ)) continue;
+              if (overlaps(minX, maxX, minZ, maxZ) || roadDist(x, z) < half + 1.2) continue;
               addBuilding(x, z, w, d, h);
               placed++;
             }
@@ -384,7 +403,7 @@
       }
       scene.add(g);
       World.group = g;
-      PhotoTex.apply([ground.material], PhotoTex.PAVING, CITY.size / 14, CITY.size / 14, 0x76839c);
+      PhotoTex.apply([ground.material], PhotoTex.PAVING, CITY.size / 26, CITY.size / 26, 0x5d6a84);
     },
     lmCells: [{ x: -69, z: -69 }, { x: 69, z: -69 }, { x: 0, z: 0 }, { x: -69, z: 69 }, { x: 69, z: 69 }],
     landmarkCells() {
