@@ -169,6 +169,25 @@
     },
   };
 
+  /* ---------- Photo textures: Poly Haven (CC0, verified) loaded over procedural fallback ---------- */
+  const PhotoTex = {
+    ASPHALT: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/aerial_asphalt_01/aerial_asphalt_01_diff_1k.jpg',
+    PAVING: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/checkered_pavement_tiles/checkered_pavement_tiles_diff_1k.jpg',
+    apply(materials, url, rx, ry, tint) {
+      new THREE.TextureLoader().setCrossOrigin('anonymous').load(url, (t) => {
+        t.wrapS = t.wrapT = THREE.RepeatWrapping;
+        t.repeat.set(rx, ry);
+        t.anisotropy = 4;
+        t.encoding = THREE.sRGBEncoding;
+        materials.forEach((m) => {
+          m.map = t;
+          if (tint) m.color = new THREE.Color(tint);
+          m.needsUpdate = true;
+        });
+      }, undefined, () => { /* keep procedural fallback */ });
+    },
+  };
+
   /* ---------- World: ground, streets, low-poly buildings, landmarks ---------- */
   const CITY = { size: 400, block: 34, road: 12 };
   const World = {
@@ -247,6 +266,8 @@
       });
       scene.add(g);
       World.group = g;
+      PhotoTex.apply([roadMatX, roadMatZ], PhotoTex.ASPHALT, CITY.size / 30, CITY.size / 30, 0x8a94a8);
+      PhotoTex.apply([ground.material], PhotoTex.PAVING, CITY.size / 14, CITY.size / 14, 0x76839c);
     },
     lmCells: [{ x: -69, z: -69 }, { x: 69, z: -69 }, { x: 0, z: 0 }, { x: -69, z: 69 }, { x: 69, z: 69 }],
     landmarkCells() {
