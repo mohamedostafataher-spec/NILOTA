@@ -435,11 +435,11 @@
     UAL: 'https://cdn.jsdelivr.net/gh/Papyszoo/CC0-Public-Domain-Models@main/packs/quaternius-universalanimationlibrary/models/ual1_standard/ual1_standard.glb',
     ALIAS: { Idle: 'Idle_Loop', Walking_A: 'Walk_Loop', Running_A: 'Jog_Fwd_Loop', Jump_Idle: 'Jump_Loop' },
     PALETTES: [
-      { skin: 0xc68a5e, top: 0x1f6f5c, bot: 0x2b2f3a, shoe: 0x111111 },
-      { skin: 0xa86f46, top: 0xb8352f, bot: 0x3a3f55, shoe: 0x222222 },
-      { skin: 0xd9a373, top: 0xe8e2d0, bot: 0x4a3b2a, shoe: 0x151515 },
-      { skin: 0x8d5a38, top: 0x2d4a8a, bot: 0x1c1c1c, shoe: 0x331f12 },
-      { skin: 0xc68a5e, top: 0xd9a21b, bot: 0x2a2a2a, shoe: 0x111111 },
+      { skin: 0xc68a5e, top: 0x1f6f5c, bot: 0x2b2f3a, shoe: 0x111111, hair: 0x1a1210, long: true },
+      { skin: 0xa86f46, top: 0xb8352f, bot: 0x3a3f55, shoe: 0x222222, hair: 0x2b1b12 },
+      { skin: 0xd9a373, top: 0xe8e2d0, bot: 0x4a3b2a, shoe: 0x151515, hair: 0x3a2616, long: true },
+      { skin: 0x8d5a38, top: 0x2d4a8a, bot: 0x1c1c1c, shoe: 0x331f12, hair: 0x0f0f0f },
+      { skin: 0xc68a5e, top: 0xd9a21b, bot: 0x2a2a2a, shoe: 0x111111, hair: 0x1a1210 },
     ],
     nTint: 0,
     loadUal(key) {
@@ -469,7 +469,8 @@
         for (let i = 0; i < p.count; i++) {
           const f = (p.getY(i) - y0) / h, ax = Math.abs(p.getX(i)) / h;
           let hex = pal.top;
-          if (f > 0.86) hex = pal.skin; else if (ax > 0.36) hex = pal.skin; else if (f < 0.5) hex = pal.bot;
+          const z = p.getZ(i);
+          if (f > 0.86) { hex = pal.skin; if (f > 0.968 || (f > 0.915 && z < -0.012) || (pal.long && f > 0.875 && z < -0.03)) hex = pal.hair; } else if (ax > 0.36) hex = pal.skin; else if (f < 0.5) hex = pal.bot;
           if (f < 0.04) hex = pal.shoe;
           c.setHex(hex).convertSRGBToLinear(); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
         }
@@ -480,16 +481,6 @@
     addFace(root, pal, n) {
       let head = null; root.traverse((o) => { if (o.name === 'Head') head = o; });
       if (!head) return;
-      const hairCols = [0x1a1210, 0x2b1b12, 0x0f0f0f, 0x3a2616, 0x1a1210];
-      const hairMat = new THREE.MeshStandardMaterial({ color: hairCols[n % hairCols.length], roughness: 0.9 });
-      const female = n % 2 === 0;
-      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.118, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.62), hairMat);
-      hair.name = 'hair'; hair.position.set(0, 0.085, 0.012); hair.scale.set(1, 1.02, 1.08); hair.castShadow = true;
-      head.add(hair);
-      if (female) {
-        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.05, 0.26, 10), hairMat);
-        tail.position.set(0, 0.0, 0.11); head.add(tail);
-      }
       const eyeMat = new THREE.MeshBasicMaterial({ color: 0x14100d });
       [-0.037, 0.037].forEach((x) => {
         const e = new THREE.Mesh(new THREE.SphereGeometry(0.0095, 8, 6), eyeMat);
