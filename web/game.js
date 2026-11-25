@@ -1254,17 +1254,16 @@
       wrap.id = 'ghud';
       wrap.innerHTML =
         '<div id="gmission" class="gpanel"></div>' +
-        '<div id="gfps" class="gpanel gfps">…</div>' +
         '<button id="gquality" class="gpanel gbtn" type="button">HQ</button>' +
-        '<button id="gsound" class="gpanel gbtn" type="button" style="top:calc(52px + env(safe-area-inset-top));right:64px">🔇</button>' +
-        '<button id="gdrive" class="gpanel gbtn" type="button" style="top:calc(94px + env(safe-area-inset-top));right:64px">🚗</button>' +
+        '<button id="gsound" class="gpanel gbtn" type="button" style="top:calc(94px + env(safe-area-inset-top));right:10px">🔇</button>' +
+        '<button id="gdrive" class="gpanel gbtn" type="button" style="top:calc(136px + env(safe-area-inset-top));right:10px">🚗</button>' +
         '<button id="gexit" class="gpanel gbtn" type="button">✕</button>' +
         '<div id="gtoast"></div>' +
         '<div id="gjoy"><div id="gjoyKnob"></div></div>' +
         '<button id="gjump" type="button">⤒</button>';
       root.appendChild(wrap);
       HUD.el = {
-        mission: wrap.querySelector('#gmission'), fps: wrap.querySelector('#gfps'),
+        mission: wrap.querySelector('#gmission'),
         quality: wrap.querySelector('#gquality'), exit: wrap.querySelector('#gexit'),
         toast: wrap.querySelector('#gtoast'),
       };
@@ -1292,7 +1291,7 @@
       clearTimeout(HUD._t);
       HUD._t = setTimeout(() => HUD.el.toast.classList.remove('show'), 2400);
     },
-    fps(v) { HUD.el.fps.textContent = v + ' fps'; },
+    fps(v) { if (HUD.el.fps) HUD.el.fps.textContent = v + ' fps'; },
     driveBtn(on) {
       const b = document.getElementById('gdrive');
       if (b) b.style.background = on ? '#d4af37' : 'rgba(11,20,32,.82)';
@@ -1306,8 +1305,7 @@
     'border-radius:10px;padding:8px 12px;font:600 13px/1.3 system-ui}' +
     '#gmission{top:calc(10px + env(safe-area-inset-top));left:10px;max-width:70vw}' +
     '#gmap{position:fixed;top:calc(62px + env(safe-area-inset-top));left:10px;width:148px;height:148px;z-index:61;border-radius:50%}' +
-    '.gfps{top:calc(10px + env(safe-area-inset-top));right:120px}' +
-    '#gquality{top:calc(10px + env(safe-area-inset-top));right:64px;cursor:pointer}' +
+    '#gquality{top:calc(52px + env(safe-area-inset-top));right:10px;cursor:pointer}' +
     '#gexit{top:calc(10px + env(safe-area-inset-top));right:10px;cursor:pointer}' +
     '#gtoast{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);z-index:62;background:#d4af37;color:#0b1420;' +
     'font:700 15px system-ui;padding:10px 18px;border-radius:999px;opacity:0;transition:opacity .25s;pointer-events:none}' +
