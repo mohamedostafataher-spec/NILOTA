@@ -470,7 +470,7 @@
           const f = (p.getY(i) - y0) / h, ax = Math.abs(p.getX(i)) / h;
           let hex = pal.top;
           const z = p.getZ(i);
-          if (f > 0.86) { hex = pal.skin; if (f > 0.968 || (f > 0.915 && z < -0.012) || (pal.long && f > 0.875 && z < -0.03)) hex = pal.hair; } else if (ax > 0.36) hex = pal.skin; else if (f < 0.5) hex = pal.bot;
+          if (f > 0.86) { hex = pal.skin; if (f > 0.945 || (f > 0.915 && z < -0.012) || (pal.long && f > 0.875 && z < -0.03)) hex = pal.hair; } else if (ax > 0.36) hex = pal.skin; else if (f < 0.5) hex = pal.bot;
           if (f < 0.04) hex = pal.shoe;
           c.setHex(hex).convertSRGBToLinear(); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
         }
@@ -483,11 +483,11 @@
       if (!head) return;
       const eyeMat = new THREE.MeshBasicMaterial({ color: 0x14100d });
       [-0.037, 0.037].forEach((x) => {
-        const e = new THREE.Mesh(new THREE.SphereGeometry(0.0095, 8, 6), eyeMat);
-        e.position.set(-x, 0.09, -0.098); head.add(e);
+        const e = new THREE.Mesh(new THREE.SphereGeometry(0.0085, 8, 6), eyeMat);
+        e.position.set(-x * 0.9, 0.03, -0.087); head.add(e);
       });
       const nose = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), new THREE.MeshStandardMaterial({ color: pal.skin, roughness: 0.8 }));
-      nose.position.set(0, 0.062, -0.108); head.add(nose);
+      nose.position.set(0, 0.0, -0.096); head.add(nose);
     },
     load(key) {
       if (Assets.UAL_OK !== false) {
