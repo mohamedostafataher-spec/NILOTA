@@ -128,19 +128,31 @@
       });
     },
     facade(base, rows, cols) {
-      return Tex.make(256, 256, (ctx, w, h) => {
+      const grid = [];
+      for (let r = 0; r < rows; r++) { grid.push([]); for (let c = 0; c < cols; c++) grid[r].push(Math.random() < 0.28); }
+      const map = Tex.make(256, 256, (ctx, w, h) => {
         ctx.fillStyle = base; ctx.fillRect(0, 0, w, h);
         Tex.noise(ctx, w, h, 300, 0.10);
         const cw = w / cols, ch = h / rows;
         for (let r = 0; r < rows; r++) {
           for (let c = 0; c < cols; c++) {
-            const lit = Math.random() < 0.28;
-            ctx.fillStyle = lit ? '#ffca7a' : '#0d1524';
+            ctx.fillStyle = grid[r][c] ? '#ffca7a' : '#0d1524';
             ctx.fillRect(c * cw + cw * 0.22, r * ch + ch * 0.22, cw * 0.56, ch * 0.5);
-            if (lit) { ctx.fillStyle = 'rgba(255,202,122,0.25)'; ctx.fillRect(c * cw + cw * 0.16, r * ch + ch * 0.16, cw * 0.68, ch * 0.62); }
           }
         }
       });
+      const glow = Tex.make(256, 256, (ctx, w, h) => {
+        ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, w, h);
+        const cw = w / cols, ch = h / rows;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if (!grid[r][c]) continue;
+            ctx.fillStyle = '#ffca7a';
+            ctx.fillRect(c * cw + cw * 0.22, r * ch + ch * 0.22, cw * 0.56, ch * 0.5);
+          }
+        }
+      });
+      return { map, glow };
     },
     sky() {
       const t = Tex.make(16, 512, (ctx, w, h) => {
@@ -186,8 +198,8 @@
       // buildings per block (skip landmark blocks)
       const palette = ['#8f6b2f', '#31435e', '#4a5f7d', '#6b5330', '#22334d', '#9a7a3d'];
       const facades = palette.map((col) => {
-        const t = Tex.facade(col, 6, 4);
-        const side = new THREE.MeshLambertMaterial({ map: t });
+        const f = Tex.facade(col, 6, 4);
+        const side = new THREE.MeshLambertMaterial({ map: f.map, emissive: 0xffb763, emissiveIntensity: 0.55, emissiveMap: f.glow });
         const top = new THREE.MeshLambertMaterial({ color: new THREE.Color(col).multiplyScalar(0.55) });
         return [side, side, top, top, side, side];
       });
@@ -209,7 +221,7 @@
             m.position.set(x, h / 2, z);
             m.castShadow = true; m.receiveShadow = true;
             g.add(m);
-            World.colliders.push({ minX: x - w / 2 - 0.6, maxX: x + w / 2 + 0.6, minZ: z - d / 2 - 0.6, maxZ: z + d / 2 + 0.6 });
+            World.colliders.push({ minX: x - w / 2 - 0.6, maxX: x + w / 2 + 0.6, minZ: z - d / 2 - 0.6, maxZ: z + d / 2 + 0.6, h: h });
           }
         }
       }
@@ -551,11 +563,27 @@
       cv.addEventListener('pointercancel', () => { dragging = false; });
     },
     update(camera) {
-      const cx = Player.x - Math.sin(FollowCam.yaw) * FollowCam.dist * Math.cos(FollowCam.pitch);
-      const cz = Player.z - Math.cos(FollowCam.yaw) * FollowCam.dist * Math.cos(FollowCam.pitch);
-      const cy = Player.y + 2 + Math.sin(FollowCam.pitch) * FollowCam.dist;
+      const tx = Player.x, ty = Player.y + 2, tz = Player.z;
+      const dx = -Math.sin(FollowCam.yaw) * Math.cos(FollowCam.pitch);
+      const dz = -Math.cos(FollowCam.yaw) * Math.cos(FollowCam.pitch);
+      const dy = Math.sin(FollowCam.pitch);
+      let dist = FollowCam.dist;
+      // camera collision: shorten the boom until the sampled ray is clear of buildings
+      const steps = 16;
+      for (let i = 2; i <= steps; i++) {
+        const t = (FollowCam.dist * i) / steps;
+        const sx = tx + dx * t, sy = ty + dy * t, sz = tz + dz * t;
+        let blocked = false;
+        for (const c of World.colliders) {
+          if (sx > c.minX && sx < c.maxX && sz > c.minZ && sz < c.maxZ && sy < (c.h || 40)) { blocked = true; break; }
+        }
+        if (blocked) { dist = Math.max(2.5, t - FollowCam.dist / steps - 0.6); break; }
+      }
+      const cx = tx + dx * dist;
+      const cz = tz + dz * dist;
+      const cy = ty + dy * dist;
       camera.position.set(cx, Math.max(1.5, cy), cz);
-      camera.lookAt(Player.x, Player.y + 2, Player.z);
+      camera.lookAt(tx, ty, tz);
     },
   };
 
@@ -724,6 +752,14 @@
       scene.add(sun); scene.add(sun.target);
       Game.sun = sun;
 
+      if (THREE.EffectComposer && THREE.RenderPass && THREE.UnrealBloomPass) {
+        const composer = new THREE.EffectComposer(renderer);
+        composer.addPass(new THREE.RenderPass(scene, camera));
+        const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(1, 1), 0.45, 0.7, 0.82);
+        composer.addPass(bloom);
+        Game.composer = composer;
+      }
+
       World.colliders = []; World.landmarks = [];
       World.build(scene);
       Vehicles.cars = []; Vehicles.build(scene);
@@ -774,7 +810,8 @@
             Game.sun.target.updateMatrixWorld();
           }
           if (Game.skyDome) Game.skyDome.position.set(px, 0, pz);
-          renderer.render(scene, camera);
+          if (Game.composer && Game.hq) Game.composer.render();
+          else renderer.render(scene, camera);
           Game.frames++;
           if (now - Game.fpsT >= 1000) {
             HUD.fps(Math.round(Game.frames * 1000 / (now - Game.fpsT)));
@@ -799,6 +836,7 @@
       if (!Game.renderer) return;
       const w = window.innerWidth, h = window.innerHeight;
       Game.renderer.setSize(w, h, false);
+      if (Game.composer) Game.composer.setSize(w, h);
       Game.camera.aspect = w / h;
       Game.camera.updateProjectionMatrix();
     },
