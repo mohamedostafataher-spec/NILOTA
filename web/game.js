@@ -484,19 +484,19 @@
       const hairMat = new THREE.MeshStandardMaterial({ color: hairCols[n % hairCols.length], roughness: 0.9 });
       const female = n % 2 === 0;
       const hair = new THREE.Mesh(new THREE.SphereGeometry(0.118, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.62), hairMat);
-      hair.position.set(0, 0.085, -0.012); hair.scale.set(1, 1.02, 1.08); hair.castShadow = true;
+      hair.name = 'hair'; hair.position.set(0, 0.085, 0.012); hair.scale.set(1, 1.02, 1.08); hair.castShadow = true;
       head.add(hair);
       if (female) {
         const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.05, 0.26, 10), hairMat);
-        tail.position.set(0, 0.0, -0.11); head.add(tail);
+        tail.position.set(0, 0.0, 0.11); head.add(tail);
       }
       const eyeMat = new THREE.MeshBasicMaterial({ color: 0x14100d });
       [-0.037, 0.037].forEach((x) => {
         const e = new THREE.Mesh(new THREE.SphereGeometry(0.0095, 8, 6), eyeMat);
-        e.position.set(x, 0.09, 0.098); head.add(e);
+        e.position.set(-x, 0.09, -0.098); head.add(e);
       });
       const nose = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), new THREE.MeshStandardMaterial({ color: pal.skin, roughness: 0.8 }));
-      nose.position.set(0, 0.062, 0.108); head.add(nose);
+      nose.position.set(0, 0.062, -0.108); head.add(nose);
     },
     load(key) {
       if (Assets.UAL_OK !== false) {
@@ -1634,7 +1634,7 @@
 
   window.NiloraGame = {
     start: Game.start.bind(Game), stop: Game.stop.bind(Game),
-    debug: () => ({ x: Player.x, y: Player.y, z: Player.z, grounded: Player.grounded,
+    debug: () => ({ hairs: (() => { let n = 0, hp = null; if (Player.mesh) Player.mesh.traverse((o) => { if (o.name === 'hair') { n++; const v = new THREE.Vector3(); o.getWorldPosition(v); hp = v.toArray(); } }); return [n, hp]; })(), x: Player.x, y: Player.y, z: Player.z, grounded: Player.grounded,
       found: Mission.foundCount(), cars: Vehicles.cars.length,
       peds: Pedestrians.list.length, driving: Drive.active, carSpeed: Math.round(Drive.speed * 10) / 10, anim: Player.human ? Player.human.currentName() : 'capsule',
       assets: Object.keys(Assets.lib),
