@@ -562,6 +562,7 @@
     pole(x, z, half) {
       World.colliders.push({ minX: x - half, maxX: x + half, minZ: z - half, maxZ: z + half, h: 4 });
     },
+    stats: { placed: 0, lamps: 0, palms: 0, signs: 0, samples: [] },
     build(scene) {
       if (!Cairo.paths.length) return 0;
       const g = new THREE.Group();
@@ -582,6 +583,7 @@
           lamp.position.x += x; lamp.position.z += z;
           lamp.rotation.y = Math.atan2(at.dx, at.dz) + (side > 0 ? Math.PI : 0);
           g.add(lamp); Props.pole(x, z, 0.3); lamps++; placed++;
+          if (Props.stats.samples.length < 6) Props.stats.samples.push([Math.round(x), Math.round(z), key]);
         }
         for (let s = 16; s < p.len - 6; s += 34) {
           if (palms >= 110) break;
@@ -619,6 +621,7 @@
         used.push(e);
       }
       scene.add(g);
+      Props.stats.placed = placed; Props.stats.lamps = lamps; Props.stats.palms = palms; Props.stats.signs = signs;
       return placed;
     },
   };
@@ -1254,6 +1257,7 @@
       found: Mission.foundCount(), cars: Vehicles.cars.length,
       peds: Pedestrians.list.length, driving: Drive.active, carSpeed: Math.round(Drive.speed * 10) / 10, anim: Player.human ? Player.human.currentName() : 'capsule',
       assets: Object.keys(Assets.lib),
+      props: Props.stats,
       collides: (x, z) => World.hit(x, z),
       tp: (x, z) => { Player.x = x; Player.z = z; } }),
   };
