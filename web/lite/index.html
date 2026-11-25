@@ -125,13 +125,20 @@ function phFind(q){var n=nrm(q);if(PHN[n])return{hit:PHN[n],exact:true};
  var w=n.split(' ');if(w.length>=2){var c=PHK.filter(function(k){return (' '+k+' ').indexOf(' '+n+' ')>=0});
   c.sort(function(a,b){return a.length-b.length});if(c.length)return{hit:PHN[c[0]],exact:false}}
  return null}
+
+function nrmL(x,l){x=x.toLowerCase().replace(/[’`]/g,"'");if(l==='ar')x=x.replace(/[\u064B-\u0652\u0670]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ـ/g,'');return x.replace(/[.,!?;:"،؟]/g,' ').replace(/\s+/g,' ').trim()}
+function phVal(h,l){return l==='en'?h.k:h.v[l]}
+var PHI={};
+function phIdx(l){if(PHI[l])return PHI[l];var m={};Object.keys(PHN).forEach(function(k){var h=PHN[k],t=phVal(h,l);if(t){var n=nrmL(t,l);if(!m[n])m[n]=h}});return PHI[l]={m:m,k:Object.keys(m)}}
+function phFindL(q,l){if(l==='en')return phFind(q);var ix=phIdx(l),n=nrmL(q,l);if(ix.m[n])return{hit:ix.m[n],exact:true};
+ var w=n.split(' ');if(w.length>=2){var c=ix.k.filter(function(k){return (' '+k+' ').indexOf(' '+n+' ')>=0});c.sort(function(a,b){return a.length-b.length});if(c.length)return{hit:ix.m[c[0]],exact:false}}return null}
 function translate(){
  rtl();localStorage.setItem('nl.from',from.value);localStorage.setItem('nl.to',to.value);
  var q=src.value.trim();if(!q){out.textContent='';hint.textContent='';return}
  if(from.value===to.value){out.textContent=q;return}
  var my=++seq;hint.textContent='…';
  // offline phrasebook first (exact match from English)
- if(from.value==='en'){var pf=phFind(q);if(pf&&pf.hit.v[to.value]){var tv=pf.hit.v[to.value];out.textContent=tv;hint.textContent=pf.exact?'offline phrasebook':'Looks like a partial phrase. Meant: "'+pf.hit.k+'"';return}}
+ var pf=phFindL(q,from.value);if(pf){var tv=phVal(pf.hit,to.value);if(tv){out.textContent=tv;hint.textContent=pf.exact?'offline phrasebook':'Looks like a partial phrase. Meant: "'+phVal(pf.hit,from.value)+'"';return}}
  var u='https://api.mymemory.translated.net/get?q='+encodeURIComponent(q)+'&langpair='+from.value+'|'+to.value;
  fetch(u).then(function(r){return r.json()}).then(function(j){
   if(my!==seq)return;var t=j&&j.responseData&&j.responseData.translatedText;
