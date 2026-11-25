@@ -80,7 +80,7 @@ EG.sort(function(a,b){return b[0].length-a[0].length});
 EGP.unshift(["محتاج\\s+إلى\\s+","محتاج "],["بالقرب\\s+من","قريب من"],["كم\\s+يبلغ\\s+(?:ثمن|سعر)[ء-ي]*","بكام ده"],["أين\\s+(?:يوجد|توجد|تقع|يقع)\\s+","فين "],["هل\\s+(?:يوجد|توجد)\\s+","فيه "]);EGP.push(["هل\\s+",""]);
 var EGR=EGP.map(function(p){var e=p[0].slice(-1);return[new RegExp(DL+p[0]+('+?*'.indexOf(e)>=0?'':DE),'g'),p[1]]});
 var EGW=EG.filter(function(p){return p[0]!==p[1]&&p[0]!=='سوف'&&p[0]!=='هناك'}).map(function(p){return[new RegExp(DL+p[0].replace(/ /g,'\\s+')+DE,'g'),p[1]]});
-function egy(t){if(!t)return t;
+function egy(t){if(!t)return t;t=t.replace(/[\u064B-\u0652\u0670]/g,'');
  EGR.forEach(function(p){t=t.replace(p[0],function(m,a){return a+p[1]})});
  EGW.forEach(function(p){t=t.replace(p[0],function(m,a){return a+p[1]})});
  t=t.replace(/(^|\s)سوف\s+أ/g,'$1ه').replace(/(^|\s)سوف\s+ن/g,'$1هـن').replace(/(^|\s)سوف\s+/g,'$1هـ');
