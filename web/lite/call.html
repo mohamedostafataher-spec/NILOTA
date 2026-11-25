@@ -58,7 +58,7 @@ label{color:var(--mut);font-size:13px;display:block;margin:8px 0 4px}
  <div class="st" id="s2"></div>
  <div id="log"></div>
  <div class="row" style="margin-top:8px"><input id="tx" placeholder="Type instead of speaking…"><button class="sec" id="send" style="margin:0;max-width:80px">Send</button></div>
- <div class="row"><button class="sec" id="mute">🎤 Mic on</button><button class="sec" id="tts">🔊 Read aloud: on</button></div>
+ <div class="row"><button class="sec" id="mute">🎤 Tap to turn mic on</button><button class="sec" id="tts">🔊 Read aloud: on</button></div>
  <button class="sec" id="vbtn">📞 Add live voice (beta)</button>
  <div class="st" id="vs"></div><audio id="ra" autoplay playsinline></audio>
  <button class="pr red" id="end" style="color:#fff;background:#c0392b">End call</button>
@@ -72,7 +72,7 @@ var th=localStorage.getItem('nl.theme')||'dark';document.documentElement.setAttr
 L.forEach(function(l){$('lang').add(new Option(l[1],l[0]))});$('lang').value=localStorage.getItem('nl.from')||'ar';
 function code(c){for(var i=0;i<L.length;i++)if(L[i][0]===c)return L[i][2]}
 function show(id){['setup','wait','live'].forEach(function(x){var e=$(x);e.hidden=x!==id;if(x==='live')e.style.display=x===id?'flex':'none'})}
-var es,topic,myId=Math.random().toString(36).slice(2,10),stream,rec,recOn=true,speaking=false,myLang,theirLang,alive=false,linked=false,micOk=false;
+var es,topic,myId=Math.random().toString(36).slice(2,10),stream,rec,recOn=false,speaking=false,myLang,theirLang,alive=false,linked=false,micOk=false;
 var API=function(from,to,q){return fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(q)+'&langpair='+from+'|'+to).then(function(r){return r.json()}).then(function(j){var t=j&&j.responseData&&j.responseData.translatedText;if(!t||/MYMEMORY WARNING/i.test(t))throw 0;return t.replace(/&#39;/g,"'").replace(/&quot;/g,'"')})};
 function add(who,text,sub){var d=document.createElement('div');d.className='m'+(who==='me'?' me':'');var t=document.createElement('div');t.className='t';t.textContent=text;t.dir='auto';d.appendChild(t);if(sub){var s=document.createElement('small');s.textContent=sub;s.dir='auto';d.appendChild(s)}$('log').appendChild(d);$('log').scrollTop=1e9}
 var ttsOn=true;function speak(t,lang){if(!ttsOn||!window.speechSynthesis){return}var u=new SpeechSynthesisUtterance(t);u.lang=code(lang);speaking=true;u.onend=u.onerror=function(){setTimeout(function(){speaking=false},400)};speechSynthesis.speak(u)}
@@ -83,20 +83,42 @@ function open_(c){topic='nilora-call-'+c.toLowerCase();alive=true;
  es.onopen=function(){pub({t:'hi',lang:myLang})};
  es.onmessage=function(ev){var m;try{m=JSON.parse(JSON.parse(ev.data).message)}catch(e){return}
   if(!m||m.id===myId)return;
-  if(m.t==='hi'){var first=!linked;theirLang=m.lang;linked=true;if(first){pub({t:'hi',lang:myLang});show('live');$('s2').textContent='Connected. Speak in your language.';startRec()}return}
+  if(m.t==='hi'){var first=!linked;theirLang=m.lang;linked=true;if(first){pub({t:'hi',lang:myLang});show('live');$('s2').textContent='Connected. Tap the mic button to speak, or type.'}return}
   if(m.t==='sig'){onSig(m);return}
   if(m.t==='bye'){add('them','(the other person left)');return}
   if(m.t==='say'){var from=m.lang||theirLang||'en';
    var done=function(tr){add('them',tr,m.text);speak(tr,myLang)};
    if(from===myLang)done(m.text);else API(from,myLang,m.text).then(done).catch(function(){add('them',m.text,'translation unavailable')});}};
  es.onerror=function(){if(alive)$('s2').textContent='Reconnecting…'};}
-function startRec(){var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
- if(!SR){$('s2').textContent='Connected. This browser has no speech recognition: type your messages (Chrome works best).';return}
- rec=new SR();rec.lang=code(myLang);rec.continuous=true;rec.interimResults=false;
- rec.onresult=function(e){if(speaking||!recOn)return;for(var i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal){var t=e.results[i][0].transcript.trim();if(t)out(t)}}};
- rec.onerror=function(e){if(e.error==='not-allowed'||e.error==='service-not-allowed')$('s2').textContent='Mic blocked: allow microphone, or type.'};
- rec.onend=function(){if(alive&&recOn){try{rec.start()}catch(e){}}};
- try{rec.start()}catch(e){}}
+
+var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+function chromeLink(){var u='intent://'+location.host+location.pathname+location.search+'#Intent;scheme=https;package=com.android.chrome;end';return u}
+function micErr(code){var m={'not-allowed':'Microphone is blocked. In Chrome tap the lock icon next to the address, open Permissions, set Microphone to Allow, then try again. Also check Android Settings > Apps > Chrome > Permissions > Microphone.',
+ 'service-not-allowed':'Speech recognition is blocked for this browser. Open this page in Chrome and allow the microphone.',
+ 'no-speech':'I did not hear anything. Tap the mic and speak right away.',
+ 'audio-capture':'No working microphone found, or another app is using it. Close other apps that use the mic and try again.',
+ 'network':'Speech recognition needs an internet connection. Check your data or Wi-Fi.',
+ 'language-not-supported':'This language is not supported for voice on your phone. Type instead.',
+ 'aborted':'','nomic':'This browser cannot access the microphone. Open the page in Chrome.'};
+ return m[code]!==undefined?m[code]:('Mic problem: '+code)}
+function noSR(){return 'Voice input is not available in this browser (in-app browsers inside Telegram, WhatsApp or Facebook block it). Open the page in Chrome: '}
+function preflight(){ // ask permission inside the tap, then release the mic so recognition can use it
+ if(!window.isSecureContext)return Promise.reject('not-allowed');
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return Promise.resolve();
+ return navigator.mediaDevices.getUserMedia({audio:true}).then(function(s){s.getTracks().forEach(function(t){t.stop()})}).catch(function(e){throw (e&&e.name==='NotAllowedError'||e&&e.name==='SecurityError')?'not-allowed':(e&&e.name==='NotFoundError'||e&&e.name==='NotReadableError')?'audio-capture':'audio-capture'})}
+function diag(){return 'https:'+(window.isSecureContext?'yes':'NO')+' speech:'+(SR?'yes':'no')+' mic-api:'+((navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)?'yes':'no')}
+var rerr='';
+function startRec(){ // called from a tap so the permission prompt works on Android
+ if(!SR){$('s2').innerHTML=noSR()+'<a style="color:var(--gold)" href="'+chromeLink()+'">Open in Chrome</a>. You can still type.';return}
+ beginRec(code(myLang),false)}
+function beginRec(lang,retried){rec=new SR();rec.lang=lang;rec.continuous=false;rec.interimResults=false;var err='',got=false;
+ rec.onresult=function(e){var i=e.resultIndex;var r=e.results[i];if(r&&r.isFinal&&!speaking&&recOn){var t=r[0].transcript.trim();if(t){got=true;out(t)}}};
+ rec.onerror=function(e){err=e.error||''};
+ rec.onend=function(){
+  if(err==='language-not-supported'&&lang==='ar-EG'&&!retried){beginRec('ar-SA',true);return}
+  if(err==='not-allowed'||err==='service-not-allowed'||err==='audio-capture'||err==='network'){recOn=false;$('mute').textContent='🎤 Tap to turn mic on';$('s2').textContent=micErr(err);return}
+  if(alive&&recOn){setTimeout(function(){try{beginRec(lang,true)}catch(e){}},250)}};
+ try{rec.start();$('s2').textContent='Listening ('+lang+')… speak in your language.'}catch(e){$('s2').textContent='Could not start the mic: '+e.message}}
 function out(t){if(!alive||!linked)return;pub({t:'say',text:t,lang:myLang});add('me',t)}
 function end(){if(alive)pub({t:'bye'});try{stopVoice(true)}catch(e){}alive=false;linked=false;try{rec&&rec.stop()}catch(e){}try{es&&es.close()}catch(e){}$('s0').textContent='Call ended.';show('setup')}
 $('create').onclick=function(){myLang=$('lang').value;localStorage.setItem('nl.from',myLang);var c=mkcode();open_(c);$('mycode').textContent=c;show('wait')};
@@ -134,7 +156,7 @@ $('tts').onclick=function(){ttsOn=!ttsOn;$('tts').textContent='🔊 Read aloud: 
 window.NiloraVoice={start:startVoice,ice:function(){return window.__ice||null},state:function(){return vstate}};
 $('send').onclick=function(){var v=$('tx').value.trim();if(v){out(v);$('tx').value=''}};
 $('tx').addEventListener('keydown',function(e){if(e.key==='Enter')$('send').onclick()});
-$('mute').onclick=function(){recOn=!recOn;$('mute').textContent=recOn?'🎤 Mic on':'🔇 Mic off';if(recOn&&rec){try{rec.start()}catch(e){}}};
+$('mute').onclick=function(){if(recOn){recOn=false;try{rec&&rec.stop()}catch(e){};$('mute').textContent='🎤 Tap to turn mic on';return}recOn=true;$('mute').textContent='🎤 Mic on';$('s2').textContent='Asking for microphone…';preflight().then(function(){startRec()}).catch(function(code){recOn=false;$('mute').textContent='🎤 Tap to turn mic on';$('s2').textContent=micErr(code)})};
 $('end').onclick=end;
 $('cpy').onclick=function(){var u=location.origin+location.pathname+'?join='+$('mycode').textContent;if(navigator.clipboard)navigator.clipboard.writeText(u);$('s1').textContent='Link copied'};
 var q=new URLSearchParams(location.search).get('join');if(q){$('jc').value=q.toUpperCase().slice(0,8)}
