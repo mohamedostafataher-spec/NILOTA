@@ -118,13 +118,11 @@
     },
     asphaltH() {
       return Tex.make(256, 64, (ctx, w, h) => {
-        ctx.fillStyle = '#232d3f'; ctx.fillRect(0, 0, w, h);
-        Tex.noise(ctx, w, h, 500, 0.25);
-        ctx.fillStyle = '#c8b568';
-        ctx.fillRect(20, h / 2 - 2, 60, 4);
-        ctx.fillRect(140, h / 2 - 2, 60, 4);
-        ctx.fillStyle = 'rgba(200,181,104,0.85)';
-        ctx.fillRect(0, 2, w, 2); ctx.fillRect(0, h - 4, w, 2);
+        ctx.fillStyle = '#131a28'; ctx.fillRect(0, 0, w, h);
+        Tex.noise(ctx, w, h, 500, 0.18);
+        ctx.fillStyle = 'rgba(154,134,74,0.8)';
+        ctx.fillRect(24, h / 2 - 1, 44, 3);
+        ctx.fillRect(148, h / 2 - 1, 44, 3);
       });
     },
     pavement() {
@@ -183,7 +181,7 @@
   /* ---------- Photo textures: Poly Haven (CC0, verified) loaded over procedural fallback ---------- */
   const PhotoTex = {
     ASPHALT: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/aerial_asphalt_01/aerial_asphalt_01_diff_1k.jpg',
-    PAVING: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/checkered_pavement_tiles/checkered_pavement_tiles_diff_1k.jpg',
+    PAVING: 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/cobblestone_01/cobblestone_01_diff_1k.jpg',
     apply(materials, url, rx, ry, tint) {
       new THREE.TextureLoader().setCrossOrigin('anonymous').load(url, (t) => {
         t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -403,7 +401,7 @@
       }
       scene.add(g);
       World.group = g;
-      PhotoTex.apply([ground.material], PhotoTex.PAVING, CITY.size / 26, CITY.size / 26, 0x5d6a84);
+      PhotoTex.apply([ground.material], PhotoTex.PAVING, CITY.size / 22, CITY.size / 22, 0x6b7790);
     },
     lmCells: [{ x: -69, z: -69 }, { x: 69, z: -69 }, { x: 0, z: 0 }, { x: -69, z: 69 }, { x: 69, z: 69 }],
     landmarkCells() {
