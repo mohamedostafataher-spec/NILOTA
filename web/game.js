@@ -691,6 +691,12 @@
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.15;
       Game.renderer = renderer;
+      try {
+        const gl = renderer.getContext();
+        const ext = gl.getExtension('WEBGL_debug_renderer_info');
+        const rn = ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : '';
+        if (/swiftshader|llvmpipe|software|angle \(google/i.test(rn)) Game.hq = false;
+      } catch (e) { /* keep HQ default */ }
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x0b1420);
       scene.fog = new THREE.Fog(0x1a2233, 60, 260);
@@ -730,6 +736,8 @@
       Player.build(scene);
       Input.init(host);
       FollowCam.init(host);
+      HUD.el.quality.textContent = Game.hq ? 'HQ' : 'LQ';
+      Game.applyQuality();
       Game.resize();
       window.addEventListener('resize', Game.resize);
       document.addEventListener('visibilitychange', Game.onVis);
@@ -781,7 +789,10 @@
     applyQuality() {
       const pr = Game.hq ? Math.min(window.devicePixelRatio || 1, 2) : 1;
       Game.renderer.setPixelRatio(pr);
+      Game.renderer.toneMapping = Game.hq ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+      Game.renderer.outputEncoding = Game.hq ? THREE.sRGBEncoding : THREE.LinearEncoding;
       if (Game.sun) Game.sun.castShadow = Game.hq;
+      if (Game.scene) Game.scene.traverse((o) => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach((m) => { m.needsUpdate = true; }); } });
       Game.resize();
     },
     resize() {
