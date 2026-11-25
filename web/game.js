@@ -265,7 +265,7 @@
       const cairoOK = Cairo.build();
       if (cairoOK) {
         // real Cairo streets: textured ribbons + junction discs, buildings along them
-        const asp = Tex.asphalt(); asp.repeat.set(1, 1);
+        const asp = Tex.asphalt(); asp.repeat.set(1, 1.5);
         const roadMat = new THREE.MeshLambertMaterial({ map: asp });
         Cairo.paths.forEach((p) => {
           for (let i = 1; i < p.pts.length; i++) {
@@ -273,6 +273,8 @@
             const len = Math.hypot(x1 - x0, z1 - z0);
             if (len < 0.5) continue;
             const geo = new THREE.PlaneGeometry(len + p.width * 0.6, p.width);
+            const uv = geo.attributes.uv;
+            for (let u = 0; u < uv.count; u++) uv.setX(u, uv.getX(u) * (len + p.width * 0.6) / 8);
             geo.rotateX(-Math.PI / 2);
             const m = new THREE.Mesh(geo, roadMat);
             m.position.set((x0 + x1) / 2, 0.02, (z0 + z1) / 2);
@@ -281,20 +283,33 @@
             g.add(m);
           }
         });
+        // road clearance boxes: no building may touch any street
+        const roadBoxes = [];
+        Cairo.paths.forEach((p) => {
+          for (let i = 1; i < p.pts.length; i++) {
+            const [x0, z0] = p.pts[i - 1], [x1, z1] = p.pts[i];
+            roadBoxes.push({
+              minX: Math.min(x0, x1) - p.width / 2, maxX: Math.max(x0, x1) + p.width / 2,
+              minZ: Math.min(z0, z1) - p.width / 2, maxZ: Math.max(z0, z1) + p.width / 2,
+            });
+          }
+        });
+        const onRoad = (minX, maxX, minZ, maxZ) => roadBoxes.some((b) => minX < b.maxX && maxX > b.minX && minZ < b.maxZ && maxZ > b.minZ);
         // buildings lining the streets
         let placed = 0;
         Cairo.paths.forEach((p) => {
-          for (let s = 8; s < p.len - 4 && placed < 260; s += 13 + rnd() * 8) {
+          for (let s = 10; s < p.len - 6 && placed < 240; s += 17 + rnd() * 11) {
             for (const side of [-1, 1]) {
-              if (rnd() < 0.35 || placed >= 260) continue;
+              if (rnd() < 0.5 || placed >= 240) continue;
               const at = Cairo.at(p, s);
               const w = 6 + rnd() * 9, d = 6 + rnd() * 9, h = 7 + rnd() * 24;
-              const off = p.width / 2 + 1.5 + d / 2 + rnd() * 5;
+              const half = Math.max(w, d) / 2;
+              const off = p.width / 2 + 2 + half + rnd() * 6;
               const x = at.x + -at.dz * off * side;
               const z = at.z + at.dx * off * side;
-              if (Math.abs(x) > 192 || Math.abs(z) > 192) continue;
+              if (Math.abs(x) > 190 || Math.abs(z) > 190) continue;
               const minX = x - w / 2 - 0.6, maxX = x + w / 2 + 0.6, minZ = z - d / 2 - 0.6, maxZ = z + d / 2 + 0.6;
-              if (overlaps(minX, maxX, minZ, maxZ)) continue;
+              if (overlaps(minX, maxX, minZ, maxZ) || onRoad(minX, maxX, minZ, maxZ)) continue;
               addBuilding(x, z, w, d, h);
               placed++;
             }
@@ -949,6 +964,17 @@
       const saved = await Save.get('save');
       if (saved) {
         Player.x = saved.x; Player.z = saved.z;
+        if (World.hit(Player.x, Player.z) && Cairo.paths.length) {
+          let best = null, bd = 1e9;
+          Cairo.paths.forEach((p) => {
+            for (let s = 0; s <= p.len; s += 8) {
+              const at = Cairo.at(p, s);
+              const dd = (at.x - Player.x) * (at.x - Player.x) + (at.z - Player.z) * (at.z - Player.z);
+              if (dd < bd) { bd = dd; best = at; }
+            }
+          });
+          if (best) { Player.x = best.x; Player.z = best.z; }
+        }
         (saved.found || []).forEach((id) => {
           const l = World.landmarks.find((m) => m.id === id);
           if (l) { l.found = true; l.mesh.material.color.set(0x7CFFB2); l.mesh.material.emissive.set(0x1d5c38); l.ring.material.color.set(0x7CFFB2); }
