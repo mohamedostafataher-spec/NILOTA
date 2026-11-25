@@ -259,6 +259,7 @@
         const f = Tex.facade(col, 6, 4);
         const side = new THREE.MeshLambertMaterial({ map: f.map, emissive: 0xffb763, emissiveIntensity: 0.55, emissiveMap: f.glow });
         const top = new THREE.MeshLambertMaterial({ color: new THREE.Color(col).multiplyScalar(0.55) });
+        Game.glowMats.push(side);
         return [side, side, top, top, side, side];
       });
       let seed = 42;
@@ -698,6 +699,97 @@
     },
   };
 
+
+
+  /* ---------- Day/night cycle: orbiting sun, lerped sky palettes, window glow ---------- */
+  const DayNight = {
+    t: 0.52, PERIOD: 300, hemi: null, amb: null, redrawT: 1,
+    cv: null, ctx: null, tex: null, cur: null,
+    KEYS: [
+      [0.00, '#22345e', '#565a7e', '#c96f3a', '#e8b25a', 0xffb060, 1.05, 0.70, 0x3a3a52],
+      [0.25, '#2f6fc4', '#7fb2e8', '#cfe4f7', '#e8f2fb', 0xfff2dd, 1.35, 1.00, 0xbcd2ea],
+      [0.50, '#1c2a52', '#5a4a70', '#d97a3a', '#d4af37', 0xffb060, 1.10, 0.75, 0x1a2233],
+      [0.75, '#02040a', '#060d1c', '#101a2e', '#141c2c', 0x8fb2e8, 0.12, 0.32, 0x0a0f1c],
+      [1.00, '#22345e', '#565a7e', '#c96f3a', '#e8b25a', 0xffb060, 1.05, 0.70, 0x3a3a52],
+    ],
+    init(scene) {
+      DayNight.cv = document.createElement('canvas');
+      DayNight.cv.width = 16; DayNight.cv.height = 512;
+      DayNight.ctx = DayNight.cv.getContext('2d');
+      const tex = new THREE.CanvasTexture(DayNight.cv);
+      tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+      tex.encoding = THREE.sRGBEncoding;
+      DayNight.tex = tex;
+      if (Game.skyDome) { Game.skyDome.material.map = tex; Game.skyDome.material.needsUpdate = true; }
+      scene.traverse((o) => {
+        if (o.isHemisphereLight) DayNight.hemi = o;
+        if (o.isAmbientLight) DayNight.amb = o;
+      });
+      DayNight.KEYS = DayNight.KEYS.map((k) => [
+        k[0],
+        new THREE.Color(k[1]), new THREE.Color(k[2]), new THREE.Color(k[3]), new THREE.Color(k[4]),
+        new THREE.Color(k[5]), k[6], k[7], new THREE.Color(k[8]),
+      ]);
+      DayNight.cur = {
+        top: new THREE.Color(), mid: new THREE.Color(), hor: new THREE.Color(), bot: new THREE.Color(),
+        sun: new THREE.Color(), sunI: 1, hemiI: 1, fog: new THREE.Color(),
+      };
+    },
+    mix(t) {
+      const K = DayNight.KEYS;
+      let i = 0;
+      while (i < K.length - 2 && t > K[i + 1][0]) i++;
+      const a = K[i], b = K[i + 1];
+      const f = Math.min(1, Math.max(0, (t - a[0]) / (b[0] - a[0])));
+      const c = DayNight.cur;
+      c.top.lerpColors(a[1], b[1], f); c.mid.lerpColors(a[2], b[2], f);
+      c.hor.lerpColors(a[3], b[3], f); c.bot.lerpColors(a[4], b[4], f);
+      c.sun.lerpColors(a[5], b[5], f);
+      c.sunI = a[6] + (b[6] - a[6]) * f;
+      c.hemiI = a[7] + (b[7] - a[7]) * f;
+      c.fog.lerpColors(a[8], b[8], f);
+    },
+    paint() {
+      const ctx = DayNight.ctx, c = DayNight.cur, h = 512;
+      const css = (col) => '#' + col.getHexString();
+      const gr = ctx.createLinearGradient(0, 0, 0, h);
+      gr.addColorStop(0.0, css(c.top));
+      gr.addColorStop(0.45, css(c.mid));
+      gr.addColorStop(0.72, css(c.hor));
+      gr.addColorStop(0.86, css(c.hor));
+      gr.addColorStop(1.0, css(c.bot));
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, 16, h);
+      DayNight.tex.needsUpdate = true;
+    },
+    update(dt, px, pz, scene) {
+      DayNight.t = (DayNight.t + dt / DayNight.PERIOD) % 1;
+      DayNight.mix(DayNight.t);
+      const c = DayNight.cur;
+      const elev = Math.sin(DayNight.t * Math.PI * 2);
+      const az = DayNight.t * Math.PI * 2 + Math.PI / 4;
+      const daylight = Math.min(1, Math.max(0, elev * 2.2));
+      if (Game.sun) {
+        if (elev > 0.04) {
+          Game.sun.color.copy(c.sun);
+          Game.sun.intensity = c.sunI * Math.min(1, elev * 2.5);
+          Game.sun.position.set(px + Math.cos(az) * 130, elev * 160 + 20, pz + Math.sin(az) * 90);
+        } else {
+          Game.sun.color.set(0x8fb2e8);
+          Game.sun.intensity = 0.14;
+          Game.sun.position.set(px - Math.cos(az) * 130, 120, pz - Math.sin(az) * 90);
+        }
+        Game.sun.target.position.set(px, 0, pz);
+        Game.sun.target.updateMatrixWorld();
+      }
+      if (DayNight.hemi) DayNight.hemi.intensity = c.hemiI;
+      if (DayNight.amb) DayNight.amb.intensity = 0.1 + 0.25 * daylight;
+      if (scene.fog) scene.fog.color.copy(c.fog);
+      if (scene.background && scene.background.isColor) scene.background.copy(c.top);
+      if (Game.glowMats) Game.glowMats.forEach((m) => { m.emissiveIntensity = 0.15 + 0.75 * (1 - daylight); });
+      DayNight.redrawT += dt;
+      if (DayNight.redrawT >= 0.5) { DayNight.redrawT = 0; DayNight.paint(); }
+    },
+  };
 
   /* ---------- Minimap: prerendered road layer + live player/landmark dots ---------- */
   const Minimap = {
@@ -1229,6 +1321,7 @@
 
   /* ---------- Game orchestrator ---------- */
   const Game = {
+    glowMats: [],
     running: false, hq: true, raf: 0, renderer: null, scene: null, camera: null,
     frames: 0, fpsT: 0, last: 0, host: null,
     async start(appEl) {
@@ -1285,6 +1378,7 @@
       sun.shadow.bias = -0.0015;
       scene.add(sun); scene.add(sun.target);
       Game.sun = sun;
+      DayNight.init(scene);
 
       if (THREE.EffectComposer && THREE.RenderPass && THREE.UnrealBloomPass) {
         const composer = new THREE.EffectComposer(renderer);
@@ -1363,11 +1457,7 @@
           Mission.update();
           Minimap.update(dt);
           const px = Drive.active ? Drive.x : Player.x, pz = Drive.active ? Drive.z : Player.z;
-          if (Game.sun) {
-            Game.sun.position.set(px + 70, 95, pz + 35);
-            Game.sun.target.position.set(px, 0, pz);
-            Game.sun.target.updateMatrixWorld();
-          }
+          DayNight.update(dt, px, pz, scene);
           if (Game.skyDome) Game.skyDome.position.set(px, 0, pz);
           if (Game.composer && Game.hq) Game.composer.render();
           else renderer.render(scene, camera);
