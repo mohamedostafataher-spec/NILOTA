@@ -650,6 +650,54 @@
     },
   };
 
+
+  /* ---------- Real CC0 car models (Kenney Car Kit 3.1, CC0, via jsDelivr) ---------- */
+  const CarLib = {
+    lib: {},
+    CDN: 'https://cdn.jsdelivr.net/gh/Arslan12216775/kenney_car-kit@HEAD/Models/GLB%20format/',
+    FILES: ['taxi', 'sedan', 'suv', 'van', 'delivery', 'truck', 'police', 'ambulance'],
+    loadOne(name) {
+      return new Promise((resolve) => {
+        try {
+          new THREE.GLTFLoader().load(CarLib.CDN + name + '.glb', (g) => resolve(g.scene), undefined, () => resolve(null));
+        } catch (e) { resolve(null); }
+      });
+    },
+    async loadAll() {
+      const out = await Promise.all(CarLib.FILES.map((f) => CarLib.loadOne(f)));
+      CarLib.FILES.forEach((f, i) => {
+        if (!out[i]) return;
+        out[i].traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
+        const box = new THREE.Box3().setFromObject(out[i]);
+        const size = new THREE.Vector3(); box.getSize(size);
+        CarLib.lib[f] = { scene: out[i], size };
+      });
+      return Object.keys(CarLib.lib).length;
+    },
+    // clone scaled to targetLen on the long horizontal axis; front turned to face frontAxis ('+X' or '+Z')
+    place(name, targetLen, frontAxis) {
+      const b = CarLib.lib[name];
+      if (!b) return null;
+      const model = b.scene.clone(true);
+      const longX = b.size.x >= b.size.z;
+      const s = targetLen / Math.max(0.1, longX ? b.size.x : b.size.z);
+      model.scale.setScalar(s);
+      const box = new THREE.Box3().setFromObject(model);
+      model.position.y = -box.min.y;
+      model.position.x = -(box.min.x + box.max.x) / 2;
+      model.position.z = -(box.min.z + box.max.z) / 2;
+      const inner = new THREE.Group();
+      inner.add(model);
+      // glTF convention: front is +Z. Rotate so the front faces frontAxis.
+      if (longX) inner.rotation.y = Math.PI / 2; // model was X-long; make it Z-long first
+      if (frontAxis === '+X') inner.rotation.y += Math.PI / 2; // then front (+Z) to +X
+      const wrap = new THREE.Group();
+      wrap.add(inner);
+      const wb = new THREE.Box3().setFromObject(wrap);
+      return { mesh: wrap, w: wb.max.x - wb.min.x, d: wb.max.z - wb.min.z };
+    },
+  };
+
   /* Animated human wrapper: mesh + mixer + simple state machine. */
   function makeHuman(key) {
     const mesh = Assets.clone(key);
@@ -740,27 +788,36 @@
       const colors = [0xb03a2e, 0x2e5fa3, 0xd4af37, 0x6e7b8a, 0x3d8b6e];
       let seed = 7;
       const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+      const mix = ['taxi', 'taxi', 'taxi', 'taxi', 'sedan', 'sedan', 'sedan', 'suv', 'suv', 'van', 'van', 'delivery', 'truck', 'police'];
       for (let i = 0; i < 14; i++) {
         const horizontal = rnd() > 0.5;
         const lane = lanes[Math.floor(rnd() * lanes.length)] + (rnd() > 0.5 ? 2.5 : -2.5);
-        const car = new THREE.Mesh(
-          new THREE.BoxGeometry(3.4, 1.2, 1.7),
-          new THREE.MeshLambertMaterial({ color: colors[Math.floor(rnd() * colors.length)] }));
-        car.position.y = 0.6;
-        car.castShadow = true;
+        let car = null;
+        const want = mix[i % mix.length];
+        const big = (want === 'truck' || want === 'delivery');
+        const placed = CarLib.place(want, big ? 5.6 : 4.4, '+X');
+        if (placed) {
+          car = placed.mesh;
+        } else {
+          car = new THREE.Mesh(
+            new THREE.BoxGeometry(3.4, 1.2, 1.7),
+            new THREE.MeshLambertMaterial({ color: colors[Math.floor(rnd() * colors.length)] }));
+          car.castShadow = true;
+        }
+        car.userData.baseY = placed ? 0 : 0.6;
         scene.add(car);
         const roads = Cairo.paths.filter((p) => p.r >= 1);
         if (roads.length) {
           const path = roads[Math.floor(rnd() * roads.length)];
           Vehicles.cars.push({
-            mesh: car, path,
+            mesh: car, path, baseY: car.userData.baseY,
             pos: rnd() * path.len,
             dir: rnd() > 0.5 ? 1 : -1,
             speed: 8 + rnd() * 7,
           });
         } else {
           Vehicles.cars.push({
-            mesh: car, horizontal, lane,
+            mesh: car, horizontal, lane, baseY: car.userData.baseY,
             pos: (rnd() - 0.5) * CITY.size,
             speed: (8 + rnd() * 7) * (rnd() > 0.5 ? 1 : -1),
           });
@@ -775,7 +832,7 @@
           if (c.pos > c.path.len) c.pos = 0;
           const at = Cairo.at(c.path, c.pos);
           const off = c.path.width / 4;
-          c.mesh.position.set(at.x + -at.dz * off * c.dir, 0.6, at.z + at.dx * off * c.dir);
+          c.mesh.position.set(at.x + -at.dz * off * c.dir, c.baseY, at.z + at.dx * off * c.dir);
           c.mesh.rotation.y = -Math.atan2(at.dz * c.dir, at.dx * c.dir);
           return;
         }
@@ -783,10 +840,10 @@
         if (c.pos > lim) c.pos = -lim;
         if (c.pos < -lim) c.pos = lim;
         if (c.horizontal) {
-          c.mesh.position.set(c.pos, 0.6, c.lane);
+          c.mesh.position.set(c.pos, c.baseY, c.lane);
           c.mesh.rotation.y = c.speed > 0 ? Math.PI / 2 : -Math.PI / 2;
         } else {
-          c.mesh.position.set(c.lane, 0.6, c.pos);
+          c.mesh.position.set(c.lane, c.baseY, c.pos);
           c.mesh.rotation.y = c.speed > 0 ? 0 : Math.PI;
         }
       });
@@ -798,6 +855,15 @@
     active: false, mesh: null, x: 4, z: 34, heading: Math.PI, speed: 0,
     ACCEL: 14, BRAKE: 22, MAX: 22, MAXREV: 7, TURN: 2.2,
     build(scene) {
+      const taxi = CarLib.place('taxi', 4.6, '+Z');
+      if (taxi) {
+        const g = taxi.mesh;
+        g.position.set(Drive.x, 0, Drive.z);
+        g.rotation.y = Drive.heading;
+        scene.add(g);
+        Drive.mesh = g;
+        return;
+      }
       const g = new THREE.Group();
       const body = new THREE.Mesh(
         new THREE.BoxGeometry(2, 0.8, 4.2),
@@ -1156,6 +1222,7 @@
       HUD.toast('⏳ loading city…');
       await Buildings.loadAll();
       await Props.loadAll();
+      await CarLib.loadAll();
       World.colliders = []; World.landmarks = [];
       World.build(scene);
       Props.build(scene);
