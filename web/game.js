@@ -427,14 +427,16 @@
     },
   };
 
-  /* ---------- Assets: rigged human characters (KayKit Adventurers, CC0) ---------- */
+  /* ---------- Assets: rigged adult-proportion humans (Quaternius Ultimate Animated Characters, CC0) ---------- */
   const Assets = {
     lib: {}, // key -> {scene, animations}
-    CDN: 'https://cdn.jsdelivr.net/gh/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/addons/kaykit_character_pack_adventures/Characters/gltf/',
-    FILES: { player: 'Rogue_Hooded.glb', ped_a: 'Knight.glb', ped_b: 'Mage.glb' },
+    CDN: 'https://cdn.jsdelivr.net/gh/Papyszoo/CC0-Public-Domain-Models@main/packs/quaternius-ultimatedanimatedcharacter/models/',
+    RAW: 'https://raw.githubusercontent.com/Papyszoo/CC0-Public-Domain-Models/main/packs/quaternius-ultimatedanimatedcharacter/models/',
+    FILES: { player: 'casual_male', ped_a: 'casual_female', ped_b: 'worker_male' },
     load(key) {
       return new Promise((resolve) => {
-        const urls = ['./game/assets/' + key + '.glb', Assets.CDN + Assets.FILES[key], Assets.CDN + Assets.FILES[key]];
+        const n = Assets.FILES[key];
+        const urls = [Assets.CDN + n + '/' + n + '.glb', Assets.CDN + n + '/' + n + '.glb', Assets.RAW + n + '/' + n + '.glb'];
         const tryNext = (i) => {
           if (i >= urls.length) return resolve(false);
           try {
@@ -910,10 +912,12 @@
     const mesh = Assets.clone(key);
     if (mesh) mesh.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) { o.castShadow = true; o.receiveShadow = false; } });
     if (!mesh) return null;
-    adultify(mesh);
+    mesh.scale.setScalar(0.58); /* Quaternius rig is ~3.1 units tall; scale to ~1.8 m */
     const mixer = new THREE.AnimationMixer(mesh);
     const clips = {};
+    const ALIAS = { Walking_A: 'Walk', Running_A: 'Run', Jump_Idle: 'Jump' };
     Assets.anims(key).forEach((c) => { clips[c.name] = c; });
+    Object.keys(ALIAS).forEach((k) => { if (!clips[k] && clips[ALIAS[k]]) clips[k] = clips[ALIAS[k]]; });
     let current = null;
     return {
       mesh, mixer,
