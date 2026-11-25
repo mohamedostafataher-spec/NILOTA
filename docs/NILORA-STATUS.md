@@ -92,3 +92,10 @@ OSM ODbL (attributed) · Open-Meteo CC BY 4.0 · USGS/Aladhan/Nager/open.er-api 
 
 ## Minimap road-render fix (v36) - live
 - Fixed: the minimap base was prerendered before the OSM road paths finished building, so the street web never drew (v34/v35 showed only the player arrow and landmark dots). The base now rebuilds automatically once road paths are ready.
+
+## Stage 11: Day/night cycle (v37) - live
+- Full 5-minute day cycle: sun orbits the player (sunrise -> noon -> sunset -> night), cool moonlight at night.
+- Sky gradient, fog, scene background, hemisphere/ambient light lerp through 4 palettes (sunrise/day/sunset/midnight); sky texture repaints at 2 Hz.
+- Building window glow (emissive) fades up at night and down by day.
+- Starts just after sunset (the classic NILORA look); free-running, not tied to real Cairo time.
+- Honesty note: stylized cycle, 5 minutes long, not real-time-of-day; stars/moon sprite not included.
