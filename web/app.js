@@ -1346,6 +1346,7 @@ document.getElementById('langToggle').addEventListener('click', () => {
 
 function showIntro() {
   if (sessionStorage.getItem('nilora.intro')) return;
+  if (location.hash.replace('#/', '').split('?')[0] === 'game') return;
   const i18n = t();
   const el = document.createElement('div');
   el.className = 'intro';
