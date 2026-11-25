@@ -626,8 +626,16 @@
         if (used.some((u) => Math.hypot(u.x - e.x, u.z - e.z) < 6)) continue;
         const near = ends.filter((o) => Math.hypot(o.x - e.x, o.z - e.z) < 4);
         if (near.length < 2) continue;
-        const x = e.x + jitter(2), z = e.z + jitter(2);
-        if (Props.blocked(x, z, 1.0) || !Props.roadClear(x, z, 0.35)) continue;
+        // search outward from the junction for a corner spot off the asphalt
+        let x = 0, z = 0, ok = false;
+        for (let r = 2; r <= 7 && !ok; r += 1) {
+          for (let a = 0; a < 8 && !ok; a++) {
+            const ang = a * Math.PI / 4 + jitter(0.4);
+            const cx = e.x + Math.cos(ang) * r, cz = e.z + Math.sin(ang) * r;
+            if (!Props.blocked(cx, cz, 1.0) && Props.roadClear(cx, cz, 0.3)) { x = cx; z = cz; ok = true; }
+          }
+        }
+        if (!ok) continue;
         const key = Math.random() > 0.45 ? 'traffic' : 'stopsign';
         const sign = Props.place(key, key === 'traffic' ? 4.4 : 2.7);
         if (!sign) break;
