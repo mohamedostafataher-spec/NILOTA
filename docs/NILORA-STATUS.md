@@ -54,3 +54,10 @@ OSM ODbL (attributed) · Open-Meteo CC BY 4.0 · USGS/Aladhan/Nager/open.er-api 
 - Android native app: Kotlin ports not started; CI known-red on 2 pre-existing UI tests.
 
 ## Operating costs: $0 (GitHub Pages + free keyless APIs).
+
+## Stage 4: Visual realism pass (v20) - live
+- Golden-hour lighting: warm directional sun + hemisphere sky/ground light, ACES filmic tone mapping, sRGB output.
+- Real-time shadows (PCF soft, 2048 map) that follow the player; HQ/LQ toggle turns shadows on/off.
+- Procedural canvas textures (free, zero-download): asphalt with lane dashes, pavement blocks, building facades with lit windows.
+- Dusk gradient sky dome matched to fog.
+- Honesty note: stylized low-poly city + chibi CC0 characters; not photoreal. Textures are procedural, not photos.
