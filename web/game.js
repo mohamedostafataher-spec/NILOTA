@@ -167,15 +167,15 @@
       const paveTex = Tex.pavement(); paveTex.repeat.set(CITY.size / 10, CITY.size / 10);
       const ground = new THREE.Mesh(
         new THREE.PlaneGeometry(CITY.size, CITY.size),
-        new THREE.MeshStandardMaterial({ map: paveTex, roughness: 0.95, metalness: 0 }));
+        new THREE.MeshLambertMaterial({ map: paveTex }));
       ground.rotation.x = -Math.PI / 2;
       ground.receiveShadow = true;
       g.add(ground);
       // streets (grid) slightly above ground
       const aspX = Tex.asphalt(); aspX.repeat.set(1, CITY.size / 24);
       const aspZ = Tex.asphalt(); aspZ.rotation = Math.PI / 2; aspZ.center.set(0.5, 0.5); aspZ.repeat.set(1, CITY.size / 24);
-      const roadMatX = new THREE.MeshStandardMaterial({ map: aspX, roughness: 0.9, metalness: 0 });
-      const roadMatZ = new THREE.MeshStandardMaterial({ map: aspZ, roughness: 0.9, metalness: 0 });
+      const roadMatX = new THREE.MeshLambertMaterial({ map: aspX });
+      const roadMatZ = new THREE.MeshLambertMaterial({ map: aspZ });
       const half = CITY.size / 2, step = CITY.block + CITY.road;
       for (let p = -half + step / 2; p < half; p += step) {
         const rx = new THREE.Mesh(new THREE.PlaneGeometry(CITY.road, CITY.size), roadMatX);
@@ -187,8 +187,8 @@
       const palette = ['#8f6b2f', '#31435e', '#4a5f7d', '#6b5330', '#22334d', '#9a7a3d'];
       const facades = palette.map((col) => {
         const t = Tex.facade(col, 6, 4);
-        const side = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, metalness: 0 });
-        const top = new THREE.MeshStandardMaterial({ color: new THREE.Color(col).multiplyScalar(0.55), roughness: 0.95, metalness: 0 });
+        const side = new THREE.MeshLambertMaterial({ map: t });
+        const top = new THREE.MeshLambertMaterial({ color: new THREE.Color(col).multiplyScalar(0.55) });
         return [side, side, top, top, side, side];
       });
       const lm = World.landmarkCells();
@@ -222,7 +222,7 @@
         const cell = World.lmCells[i];
         const ob = new THREE.Mesh(
           new THREE.ConeGeometry(1.6, 7, 6),
-          new THREE.MeshStandardMaterial({ color: 0xd4af37, emissive: 0x6b5410, roughness: 0.4, metalness: 0.6 }));
+          new THREE.MeshLambertMaterial({ color: 0xd4af37, emissive: 0x6b5410 }));
         ob.position.set(cell.x, 3.5, cell.z);
         ob.castShadow = true;
         g.add(ob);
