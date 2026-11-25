@@ -96,6 +96,7 @@
       const t = new THREE.CanvasTexture(c);
       t.wrapS = t.wrapT = THREE.RepeatWrapping;
       t.anisotropy = 4;
+      t.encoding = THREE.sRGBEncoding;
       return t;
     },
     noise(ctx, w, h, n, alpha) {
