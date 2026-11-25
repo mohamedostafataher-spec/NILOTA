@@ -481,13 +481,6 @@
     addFace(root, pal, n) {
       let head = null; root.traverse((o) => { if (o.name === 'Head') head = o; });
       if (!head) return;
-      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x14100d });
-      [-0.037, 0.037].forEach((x) => {
-        const e = new THREE.Mesh(new THREE.SphereGeometry(0.0085, 8, 6), eyeMat);
-        e.position.set(-x * 0.9, 0.03, -0.087); head.add(e);
-      });
-      const nose = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), new THREE.MeshStandardMaterial({ color: pal.skin, roughness: 0.8 }));
-      nose.position.set(0, 0.0, -0.096); head.add(nose);
     },
     load(key) {
       if (Assets.UAL_OK !== false) {
