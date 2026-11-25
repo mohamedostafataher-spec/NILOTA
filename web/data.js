@@ -139,3 +139,13 @@ const PHRASES = {
   CA: [['Hi','هاي','مرحبًا'],['Thanks','ثانكس','شكرًا'],['Please','بليز','من فضلك'],['Yeah','ييه','نعم'],['No','نو','لا']],
   MX: [['Órale','أوراليه','هيّا/رائع'],['Gracias','غراسياس','شكرًا'],['Por favor','بور فافور','من فضلك'],['Sí','سي','نعم'],['No','نو','لا']],
 };
+
+/* Sample travelers for the keyless ta'aruf (introductions) layer. Local-first: no accounts, no server. */
+const SAMPLE_TRAVELERS = [
+  { id: 'tv-nadia', name: 'Nadia El-Masry', flag: '🇪🇬', cityId: 'cairo', langs: 'العربية · English', note: { ar: 'بحب أرسم البردي وأشارك وصفة الكركديه', en: 'Loves papyrus painting and sharing karkadeh recipes', fr: 'Aime peindre le papyrus et partager le karkadé', ru: 'Рисует на папирусе и делится рецептом каркаде' } },
+  { id: 'tv-yara', name: 'Yara Samy', flag: '🇪🇬', cityId: 'alexandria', langs: 'العربية · Français', note: { ar: 'بتوثق المقاهي القديمة على البحر', en: 'Documents the old seaside cafés', fr: 'Documente les vieux cafés en bord de mer', ru: 'Собирает старые приморские кафе' } },
+  { id: 'tv-omar', name: 'Omar Adel', flag: '🇪🇬', cityId: 'luxor', langs: 'العربية · English', note: { ar: 'مرشد شاب بيحب حكايات المعابد', en: 'Young guide who loves temple stories', fr: 'Jeune guide passionné de temples', ru: 'Молодой гид, влюблённый в храмы' } },
+  { id: 'tv-claire', name: 'Claire Dubois', flag: '🇫🇷', cityId: 'paris', langs: 'Français · العربية', note: { ar: 'بتتعلم عربي وعايزة تتمرن على التحيات', en: 'Learning Arabic, wants to practice greetings', fr: 'Apprend l\'arabe, veut pratiquer les salutations', ru: 'Учит арабский, хочет практиковать приветствия' } },
+  { id: 'tv-kenji', name: 'Kenji Takahashi', flag: '🇯🇵', cityId: 'kyoto', langs: '日本語 · English', note: { ar: 'خبير أوريجامي وشاي الماتشا', en: 'Origami and matcha tea master', fr: 'Maître origami et thé matcha', ru: 'Мастер оригами и матча' } },
+  { id: 'tv-marco', name: 'Marco Rossi', flag: '🇮🇹', cityId: 'rome', langs: 'Italiano · English', note: { ar: 'بيصور الشوارع وقت الشروق', en: 'Photographs streets at sunrise', fr: 'Photographie les rues à l\'aube', ru: 'Снимает улицы на рассвете' } },
+];
