@@ -89,3 +89,6 @@ OSM ODbL (attributed) · Open-Meteo CC BY 4.0 · USGS/Aladhan/Nager/open.er-api 
 
 ## Minimap readability tweak (v35) - live
 - Brightened minimap road palette and widened road strokes so the street web reads against the night scene; lighter map disc background.
+
+## Minimap road-render fix (v36) - live
+- Fixed: the minimap base was prerendered before the OSM road paths finished building, so the street web never drew (v34/v35 showed only the player arrow and landmark dots). The base now rebuilds automatically once road paths are ready.
