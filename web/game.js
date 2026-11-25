@@ -545,7 +545,9 @@
       HUD.mount(host);
       HUD.toast('⏳ loading city…');
       await Assets.loadAll();
+      if (!Assets.lib.player) await Assets.load('player');
       Pedestrians.list = []; Pedestrians.build(scene);
+      Player.build(scene);
       Input.init(host);
       FollowCam.init(host);
       Game.resize();
@@ -627,6 +629,7 @@
     debug: () => ({ x: Player.x, y: Player.y, z: Player.z, grounded: Player.grounded,
       found: Mission.foundCount(), cars: Vehicles.cars.length,
       peds: Pedestrians.list.length, anim: Player.human ? Player.human.currentName() : 'capsule',
+      assets: Object.keys(Assets.lib),
       collides: (x, z) => World.hit(x, z),
       tp: (x, z) => { Player.x = x; Player.z = z; } }),
   };
