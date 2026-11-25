@@ -118,6 +118,7 @@ OSM ODbL (attributed) · Open-Meteo CC BY 4.0 · USGS/Aladhan/Nager/open.er-api 
 3. Egyptian passport with a Golden Scarab stamp per discovered city.
 4. Egyptian-Arabic-first identity across the product.
 5. Weekly player challenges on the Egypt map.
+6. Friend-making (ta'aruf) mechanic - requested by Mohamed Nov 25. Candidates awaiting his confirmation: 'Traveler of the Day' daily match with one player from another country, and introducing players visiting the same city (real matching needs a backend - keyless version can be local/sample only).
 
 ## Egypt-wide vision (Nov 25)
 - All of Egypt, realistic, city by city (Alexandria first, then Luxor, Aswan, more), each city with real OSM streets and landmarks, shipped as its own stage after Cairo polish - same keyless pipeline as Cairo.
