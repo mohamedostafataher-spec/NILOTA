@@ -30,6 +30,9 @@ jobs:
             cp app/google-services.json.ci app/google-services.json
           fi
 
+      - name: Generate debug keystore
+        run: keytool -genkeypair -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
