@@ -1,4 +1,4 @@
-const CACHE = 'nilora-v17';
+const CACHE = 'nilora-v18';
 const SHELL = ['./', './index.html', './styles.css', './data.js', './globe.js', './game.js', './app.js', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', (e) => {
@@ -15,13 +15,25 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(e.request, { ignoreSearch: true }).then((hit) =>
-      hit || fetch(e.request).then((res) => {
+  const url = new URL(e.request.url);
+  if (url.origin === location.origin) {
+    // network-first: always try fresh, fall back to cache when offline
+    e.respondWith(
+      fetch(e.request).then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
         return res;
-      }).catch(() => caches.match('./index.html'))
-    )
-  );
+      }).catch(() => caches.match(e.request, { ignoreSearch: true }).then((hit) => hit || caches.match('./index.html')))
+    );
+  } else {
+    // CDN/static: cache-first
+    e.respondWith(
+      caches.match(e.request).then((hit) =>
+        hit || fetch(e.request).then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
+          return res;
+        }))
+    );
+  }
 });
