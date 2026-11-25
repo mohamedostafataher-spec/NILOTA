@@ -99,3 +99,25 @@ OSM ODbL (attributed) · Open-Meteo CC BY 4.0 · USGS/Aladhan/Nager/open.er-api 
 - Building window glow (emissive) fades up at night and down by day.
 - Starts just after sunset (the classic NILORA look); free-running, not tied to real Cairo time.
 - Honesty note: stylized cycle, 5 minutes long, not real-time-of-day; stars/moon sprite not included.
+
+## UI simplification pass (v38) - live
+- Mohamed's feedback (Nov 25): simpler UI, clean up clutter/formatting.
+- Game HUD: removed the on-screen fps counter; right-side buttons (exit / HQ / sound / car) now form one clean aligned column on the right edge.
+- Home: removed the duplicate points figure from the progress strip (level + points already live in the header).
+- styles.css and app.js are now version-tagged like game.js, so future updates bypass the 10-minute HTTP cache immediately.
+
+## Bottled-style bottom navigation (v39) - live
+- Mohamed's direction (Nov 25): make the UI like Bottled (message-in-a-bottle app), especially the bottom menus.
+- Bottom bar is now icons-only (labels kept in the DOM for accessibility/localization, visually hidden), evenly spaced, RTL-correct.
+- Center: prominent raised gold circular button with the NILORA ankh, Bottled's signature center-action pattern; opens the 3D game directly.
+- Tabs: home, explore, PLAY (center), passport, journey. Challenges left the bar (still reachable from the home cards).
+
+## Roadmap backlog - Mohamed's differentiating features (Nov 25, priority order TBD by Mohamed)
+1. Voice calls with instant translation (honest note: needs external infra - WebRTC signaling + translation API; a free in-browser Web Speech API demo is the keyless fallback).
+2. Message-in-a-bottle on the real map: throw a bottle in the Nile, a random player worldwide picks it up and replies (Bottled's core mechanic; real cross-player delivery needs a backend - keyless version can be local/sample only).
+3. Egyptian passport with a Golden Scarab stamp per discovered city.
+4. Egyptian-Arabic-first identity across the product.
+5. Weekly player challenges on the Egypt map.
+
+## Egypt-wide vision (Nov 25)
+- All of Egypt, realistic, city by city (Alexandria first, then Luxor, Aswan, more), each city with real OSM streets and landmarks, shipped as its own stage after Cairo polish - same keyless pipeline as Cairo.
