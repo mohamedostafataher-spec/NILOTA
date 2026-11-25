@@ -173,20 +173,24 @@
     FILES: { player: 'Rogue_Hooded.glb', ped_a: 'Knight.glb', ped_b: 'Mage.glb' },
     load(key) {
       return new Promise((resolve) => {
-        const urls = ['./game/assets/' + key + '.glb', Assets.CDN + Assets.FILES[key]];
+        const urls = ['./game/assets/' + key + '.glb', Assets.CDN + Assets.FILES[key], Assets.CDN + Assets.FILES[key]];
         const tryNext = (i) => {
           if (i >= urls.length) return resolve(false);
           try {
             new THREE.GLTFLoader().load(urls[i],
               (g) => { Assets.lib[key] = g; resolve(true); },
               undefined,
-              () => tryNext(i + 1));
+              () => setTimeout(() => tryNext(i + 1), 800));
           } catch (e) { tryNext(i + 1); }
         };
         tryNext(0);
       });
     },
-    loadAll() { return Promise.all(['player', 'ped_a', 'ped_b'].map((k) => Assets.load(k))); },
+    async loadAll() {
+      const out = [];
+      for (const k of ['player', 'ped_a', 'ped_b']) out.push(await Assets.load(k));
+      return out;
+    },
     clone(key) {
       const src = Assets.lib[key];
       return src ? THREE.SkeletonUtils.clone(src.scene) : null;
