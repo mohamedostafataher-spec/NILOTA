@@ -505,6 +505,124 @@
     },
   };
 
+
+  /* ---------- Street props: lights, palms, signs (Quaternius CC0, jsDelivr) ---------- */
+  const Props = {
+    lib: {},
+    CDN: 'https://cdn.jsdelivr.net/gh/trebeljahr/quaternius-showcase@main/public/glb/',
+    FILES: {
+      palm1: 'nature_pack/PalmTree_1.glb',
+      palm2: 'nature_pack/PalmTree_2.glb',
+      palm3: 'nature_pack/PalmTree_3.glb',
+      palm4: 'nature_pack/PalmTree_4.glb',
+      lamp1: 'street_pack/Streetlight_Single.glb',
+      lamp2: 'street_pack/Streetlight_Double.glb',
+      traffic: 'street_pack/TrafficLight.glb',
+      stopsign: 'street_pack/Sign_Stop.glb',
+    },
+    loadOne(url) {
+      return new Promise((resolve) => {
+        try {
+          new THREE.GLTFLoader().load(url, (g) => resolve(g.scene), undefined, () => resolve(null));
+        } catch (e) { resolve(null); }
+      });
+    },
+    async loadAll() {
+      const keys = Object.keys(Props.FILES);
+      const out = await Promise.all(keys.map((k) => Props.loadOne(Props.CDN + Props.FILES[k])));
+      keys.forEach((k, i) => {
+        if (!out[i]) return;
+        out[i].traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
+        const box = new THREE.Box3().setFromObject(out[i]);
+        const size = new THREE.Vector3(); box.getSize(size);
+        Props.lib[k] = { scene: out[i], size };
+      });
+      return Object.keys(Props.lib).length;
+    },
+    place(key, targetH) {
+      const b = Props.lib[key];
+      if (!b) return null;
+      const mesh = b.scene.clone(true);
+      const s = targetH / Math.max(0.1, b.size.y);
+      mesh.scale.setScalar(s);
+      const box = new THREE.Box3().setFromObject(mesh);
+      mesh.position.y = -box.min.y;
+      mesh.position.x = -(box.min.x + box.max.x) / 2;
+      mesh.position.z = -(box.min.z + box.max.z) / 2;
+      const wrap = new THREE.Group();
+      wrap.add(mesh);
+      return wrap;
+    },
+    blocked(x, z, pad) {
+      for (const c of World.colliders) {
+        if (x > c.minX - pad && x < c.maxX + pad && z > c.minZ - pad && z < c.maxZ + pad) return true;
+      }
+      return false;
+    },
+    pole(x, z, half) {
+      World.colliders.push({ minX: x - half, maxX: x + half, minZ: z - half, maxZ: z + half, h: 4 });
+    },
+    build(scene) {
+      if (!Cairo.paths.length) return 0;
+      const g = new THREE.Group();
+      let placed = 0, lamps = 0, palms = 0, signs = 0;
+      const jitter = (a) => (Math.random() - 0.5) * a;
+      // streetlights + palms along every road
+      Cairo.paths.forEach((p) => {
+        const off = p.width / 2 + 1.0;
+        for (let s = 8; s < p.len - 6; s += 22) {
+          if (lamps >= 100) break;
+          const side = (Math.floor(s / 22) % 2) ? 1 : -1;
+          const at = Cairo.at(p, s);
+          const x = at.x - at.dz * off * side, z = at.z + at.dx * off * side;
+          if (Props.blocked(x, z, 0.8)) continue;
+          const key = (p.r >= 2 && Math.random() > 0.5) ? 'lamp2' : 'lamp1';
+          const lamp = Props.place(key, 5.2);
+          if (!lamp) break;
+          lamp.position.x += x; lamp.position.z += z;
+          lamp.rotation.y = Math.atan2(at.dx, at.dz) + (side > 0 ? Math.PI : 0);
+          g.add(lamp); Props.pole(x, z, 0.3); lamps++; placed++;
+        }
+        for (let s = 16; s < p.len - 6; s += 34) {
+          if (palms >= 110) break;
+          const side = (Math.floor(s / 34) % 2) ? -1 : 1;
+          const at = Cairo.at(p, s + jitter(6));
+          const x = at.x - at.dz * (off + 1.6) * side + jitter(1), z = at.z + at.dx * (off + 1.6) * side + jitter(1);
+          if (Props.blocked(x, z, 0.8)) continue;
+          const palm = Props.place('palm' + (1 + Math.floor(Math.random() * 4)), 5.5 + Math.random() * 2.5);
+          if (!palm) break;
+          palm.position.x += x; palm.position.z += z;
+          palm.rotation.y = Math.random() * Math.PI * 2;
+          g.add(palm); Props.pole(x, z, 0.35); palms++; placed++;
+        }
+      });
+      // intersections: endpoints shared by >=2 paths get a traffic light or stop sign
+      const ends = [];
+      Cairo.paths.forEach((p) => {
+        ends.push({ x: p.pts[0][0], z: p.pts[0][1], p });
+        ends.push({ x: p.pts[p.pts.length - 1][0], z: p.pts[p.pts.length - 1][1], p });
+      });
+      const used = [];
+      for (let i = 0; i < ends.length && signs < 22; i++) {
+        const e = ends[i];
+        if (used.some((u) => Math.hypot(u.x - e.x, u.z - e.z) < 6)) continue;
+        const near = ends.filter((o) => Math.hypot(o.x - e.x, o.z - e.z) < 4);
+        if (near.length < 2) continue;
+        const x = e.x + jitter(2), z = e.z + jitter(2);
+        if (Props.blocked(x, z, 1.0)) continue;
+        const key = Math.random() > 0.45 ? 'traffic' : 'stopsign';
+        const sign = Props.place(key, key === 'traffic' ? 4.4 : 2.7);
+        if (!sign) break;
+        sign.position.x += x; sign.position.z += z;
+        sign.rotation.y = Math.random() * Math.PI * 2;
+        g.add(sign); Props.pole(x, z, 0.3); signs++; placed++;
+        used.push(e);
+      }
+      scene.add(g);
+      return placed;
+    },
+  };
+
   /* Animated human wrapper: mesh + mixer + simple state machine. */
   function makeHuman(key) {
     const mesh = Assets.clone(key);
@@ -1010,8 +1128,10 @@
       HUD.mount(host);
       HUD.toast('⏳ loading city…');
       await Buildings.loadAll();
+      await Props.loadAll();
       World.colliders = []; World.landmarks = [];
       World.build(scene);
+      Props.build(scene);
       Vehicles.cars = []; Vehicles.build(scene);
       Drive.build(scene);
       if (Cairo.paths.length) {
