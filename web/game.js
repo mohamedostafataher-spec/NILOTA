@@ -1349,6 +1349,7 @@
       peds: Pedestrians.list.length, driving: Drive.active, carSpeed: Math.round(Drive.speed * 10) / 10, anim: Player.human ? Player.human.currentName() : 'capsule',
       assets: Object.keys(Assets.lib),
       props: Props.stats,
+      carSample: Vehicles.cars.slice(0, 6).map((c) => [Math.round(c.mesh.position.x), Math.round(c.mesh.position.z), c.mesh.type]),
       collides: (x, z) => World.hit(x, z),
       tp: (x, z) => { Player.x = x; Player.z = z; } }),
   };
