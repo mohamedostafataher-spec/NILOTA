@@ -86,3 +86,6 @@ OSM ODbL (attributed) · Open-Meteo CC BY 4.0 · USGS/Aladhan/Nager/open.er-api 
 - Live markers (redrawn ~4 Hz): player as a green heading arrow (red when driving the taxi), discovery landmarks as gold dots (dim green once found).
 - Zero network cost: map is drawn once to an offscreen canvas at boot from local road data.
 - Honesty note: map covers the loaded downtown block; it does not stream new tiles as you leave the area.
+
+## Minimap readability tweak (v35) - live
+- Brightened minimap road palette and widened road strokes so the street web reads against the night scene; lighter map disc background.
