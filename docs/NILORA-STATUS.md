@@ -132,3 +132,9 @@ OSM ODbL (attributed) · Open-Meteo CC BY 4.0 · USGS/Aladhan/Nager/open.er-api 
 - Traveling postcards: a sent postcard now gains one journey hop per day (deterministic city path, max 4) and shows "traveling - last carried by <sample traveler>"; found sample postcards already had journeys.
 - Linked from the home hub cards; grouped under the Journey tab in the bottom nav. All 4 languages (AR/EN/FR/RU).
 - Incident (fixed same hour): the first v41 app.js commit duplicated file content due to a GitHub web-editor fill quirk; the file was replaced with the correct content ~10 minutes later. Live site impact window was brief.
+
+## Adult-proportions pass on human characters (v42 + v43) - live
+- Player and pedestrian rigs (KayKit Adventurers, chibi-proportioned) now get a runtime bone-scale pass at load: head smaller (0.74x), legs longer (upper 1.38x, lower 1.28x), spine slightly taller (1.08x); the rig root auto-lifts so feet still plant on the road.
+- Done in game.js rather than binary GLB surgery: same visual result, instantly tunable/reversible.
+- Verified live with screenshots: characters walk, animate and stand correctly.
+- Honesty note: this softens the childish proportions but the KayKit art style stays stylized. Truly adult-looking humans need a different character pack (e.g. realistic-proportioned rigged CC0 models) - possible future stage, needs Mohamed's call.
