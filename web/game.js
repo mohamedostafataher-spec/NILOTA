@@ -734,6 +734,22 @@
         top: new THREE.Color(), mid: new THREE.Color(), hor: new THREE.Color(), bot: new THREE.Color(),
         sun: new THREE.Color(), sunI: 1, hemiI: 1, fog: new THREE.Color(),
       };
+      /* stars: fixed points on the upper dome shell, fade in only at night */
+      const N = 700, pos = new Float32Array(N * 3);
+      let ss = 99;
+      const srnd = () => { ss = (ss * 1103515245 + 12345) % 2147483648; return ss / 2147483648; };
+      for (let i = 0; i < N; i++) {
+        const th = srnd() * Math.PI * 2, y = 0.12 + srnd() * 0.85;
+        const r = Math.sqrt(Math.max(0, 1 - y * y)) * 400;
+        pos[i * 3] = Math.cos(th) * r; pos[i * 3 + 1] = y * 400; pos[i * 3 + 2] = Math.sin(th) * r;
+      }
+      const sgeo = new THREE.BufferGeometry();
+      sgeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      DayNight.stars = new THREE.Points(sgeo, new THREE.PointsMaterial({
+        color: 0xd8e6ff, size: 1.7, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false, fog: false,
+      }));
+      DayNight.stars.frustumCulled = false;
+      scene.add(DayNight.stars);
     },
     mix(t) {
       const K = DayNight.KEYS;
@@ -786,6 +802,11 @@
       if (scene.fog) scene.fog.color.copy(c.fog);
       if (scene.background && scene.background.isColor) scene.background.copy(c.top);
       if (Game.glowMats) Game.glowMats.forEach((m) => { m.emissiveIntensity = 0.15 + 0.75 * (1 - daylight); });
+      if (DayNight.stars) {
+        DayNight.stars.material.opacity = Math.max(0, 0.95 - daylight * 2.2);
+        DayNight.stars.position.set(px, 0, pz);
+        DayNight.stars.rotation.y += dt * 0.004;
+      }
       DayNight.redrawT += dt;
       if (DayNight.redrawT >= 0.5) { DayNight.redrawT = 0; DayNight.paint(); }
     },
@@ -1537,6 +1558,8 @@
       props: Props.stats,
       carSample: Vehicles.cars.slice(0, 6).map((c) => [Math.round(c.mesh.position.x), Math.round(c.mesh.position.z), c.mesh.type]),
       collides: (x, z) => World.hit(x, z),
-      tp: (x, z) => { Player.x = x; Player.z = z; } }),
+      tp: (x, z) => { Player.x = x; Player.z = z; },
+      daynight: () => ({ t: DayNight.t, stars: DayNight.stars ? Math.round(DayNight.stars.material.opacity * 100) / 100 : null }) }),
+    setTime: (t) => { DayNight.t = ((t % 1) + 1) % 1; },
   };
 })();
