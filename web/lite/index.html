@@ -114,17 +114,42 @@ function code(c){for(var i=0;i<L.length;i++)if(L[i][0]===c)return L[i][2]}
 function speak(t,c){if(!voice||!window.speechSynthesis||!t)return;var u=new SpeechSynthesisUtterance(t);u.lang=code(c);speechSynthesis.cancel();speechSynthesis.speak(u)}
 $('say').onclick=function(){var v=voice;voice=true;speak(out.textContent,to.value);voice=v};
 $('copy').onclick=function(){if(navigator.clipboard)navigator.clipboard.writeText(out.textContent);hint.textContent='Copied'};
-var SR=window.SpeechRecognition||window.webkitSpeechRecognition,rec=null;
+
+var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+function chromeLink(){var u='intent://'+location.host+location.pathname+location.search+'#Intent;scheme=https;package=com.android.chrome;end';return u}
+function micErr(code){var m={'not-allowed':'Microphone is blocked. In Chrome tap the lock icon next to the address, open Permissions, set Microphone to Allow, then try again. Also check Android Settings > Apps > Chrome > Permissions > Microphone.',
+ 'service-not-allowed':'Speech recognition is blocked for this browser. Open this page in Chrome and allow the microphone.',
+ 'no-speech':'I did not hear anything. Tap the mic and speak right away.',
+ 'audio-capture':'No working microphone found, or another app is using it. Close other apps that use the mic and try again.',
+ 'network':'Speech recognition needs an internet connection. Check your data or Wi-Fi.',
+ 'language-not-supported':'This language is not supported for voice on your phone. Type instead.',
+ 'aborted':'','nomic':'This browser cannot access the microphone. Open the page in Chrome.'};
+ return m[code]!==undefined?m[code]:('Mic problem: '+code)}
+function noSR(){return 'Voice input is not available in this browser (in-app browsers inside Telegram, WhatsApp or Facebook block it). Open the page in Chrome: '}
+function preflight(){ // ask permission inside the tap, then release the mic so recognition can use it
+ if(!window.isSecureContext)return Promise.reject('not-allowed');
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return Promise.resolve();
+ return navigator.mediaDevices.getUserMedia({audio:true}).then(function(s){s.getTracks().forEach(function(t){t.stop()})}).catch(function(e){throw (e&&e.name==='NotAllowedError'||e&&e.name==='SecurityError')?'not-allowed':(e&&e.name==='NotFoundError'||e&&e.name==='NotReadableError')?'audio-capture':'audio-capture'})}
+function diag(){return 'https:'+(window.isSecureContext?'yes':'NO')+' speech:'+(SR?'yes':'no')+' mic-api:'+((navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)?'yes':'no')}
+var rec=null,gotText=false;
+function showHint(t,link){hint.textContent=t;if(link){var a=document.createElement('a');a.href=chromeLink();a.textContent='Open in Chrome';a.style.cssText='color:var(--gold);margin-left:6px';hint.appendChild(a)}}
+function begin(lang,retried){
+ rec=new SR();rec.lang=lang;rec.interimResults=true;rec.continuous=false;rec.maxAlternatives=1;gotText=false;var err='';
+ $('mic').className='mic on';showHint('Listening… ('+lang+')');
+ rec.onresult=function(e){var s='';for(var i=0;i<e.results.length;i++)s+=e.results[i][0].transcript;if(s){gotText=true;src.value=s;clearTimeout(tm);tm=setTimeout(translate,200)}};
+ rec.onerror=function(e){err=e.error||'unknown'};
+ rec.onend=function(){rec=null;$('mic').className='mic';
+  if(err==='language-not-supported'&&lang==='ar-EG'&&!retried){begin('ar-SA',true);return}
+  if(err&&err!=='aborted'){showHint(micErr(err)+(err==='not-allowed'||err==='service-not-allowed'?'':''));return}
+  if(!gotText){showHint(micErr('no-speech'));return}
+  hint.textContent='';translate();setTimeout(function(){speak(out.textContent,to.value)},900)};
+ try{rec.start()}catch(e){rec=null;$('mic').className='mic';showHint('Could not start the mic: '+e.message)}}
 $('mic').onclick=function(){
- if(!SR){hint.textContent='Voice input is not supported in this browser. Use Chrome or Safari, or type.';return}
+ if(!SR){showHint(noSR(),true);return}
  if(rec){rec.stop();return}
- rec=new SR();rec.lang=code(from.value);rec.interimResults=true;rec.continuous=false;
- $('mic').className='mic on';hint.textContent='Listening…';
- rec.onresult=function(e){var s='';for(var i=0;i<e.results.length;i++)s+=e.results[i][0].transcript;src.value=s;clearTimeout(tm);tm=setTimeout(translate,200)};
- rec.onerror=function(e){hint.textContent='Mic: '+e.error};
- rec.onend=function(){rec=null;$('mic').className='mic';if(src.value.trim()){translate();setTimeout(function(){speak(out.textContent,to.value)},900)}};
- try{rec.start()}catch(e){rec=null;$('mic').className='mic'}
-};
+ hint.textContent='Asking for microphone…';
+ preflight().then(function(){begin(code(from.value),false)}).catch(function(c){showHint(micErr(c))})};
+$('net').title=diag();window.NiloraMic={diag:diag};
 function chips(){var h='';Object.keys(PH).forEach(function(k){h+='<button data-k="'+k.replace(/"/g,'&quot;')+'">'+k+'</button>'});$('chips').innerHTML=h;[].forEach.call($('chips').children,function(el){el.onclick=function(){from.value='en';if(to.value==='en')to.value='ar';src.value=el.getAttribute('data-k');translate();setTimeout(function(){speak(out.textContent,to.value)},300)}})}
 chips();
 function hist(){$('hsl').innerHTML=H.length?H.map(function(x){return '<div class="hist"><small>'+x.f+' → '+x.t+'</small><div>'+esc(x.a)+'</div><div style="color:var(--gold)">'+esc(x.b)+'</div></div>'}).join(''):'<div class="hint">Nothing yet.</div>'}
