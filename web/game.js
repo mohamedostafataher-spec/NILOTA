@@ -432,7 +432,58 @@
     lib: {}, // key -> {scene, animations}
     CDN: 'https://cdn.jsdelivr.net/gh/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/addons/kaykit_character_pack_adventures/Characters/gltf/',
     FILES: { player: 'Rogue_Hooded.glb', ped_a: 'Knight.glb', ped_b: 'Mage.glb' },
+    UAL: 'https://cdn.jsdelivr.net/gh/Papyszoo/CC0-Public-Domain-Models@main/packs/quaternius-universalanimationlibrary/models/ual1_standard/ual1_standard.glb',
+    ALIAS: { Idle: 'Idle_Loop', Walking_A: 'Walk_Loop', Running_A: 'Jog_Fwd_Loop', Jump_Idle: 'Jump_Loop' },
+    PALETTES: [
+      { skin: 0xc68a5e, top: 0x1f6f5c, bot: 0x2b2f3a, shoe: 0x111111 },
+      { skin: 0xa86f46, top: 0xb8352f, bot: 0x3a3f55, shoe: 0x222222 },
+      { skin: 0xd9a373, top: 0xe8e2d0, bot: 0x4a3b2a, shoe: 0x151515 },
+      { skin: 0x8d5a38, top: 0x2d4a8a, bot: 0x1c1c1c, shoe: 0x331f12 },
+      { skin: 0xc68a5e, top: 0xd9a21b, bot: 0x2a2a2a, shoe: 0x111111 },
+    ],
+    nTint: 0,
+    loadUal(key) {
+      return new Promise((resolve) => {
+        const go = (n) => {
+          if (n > 1) return resolve(false);
+          new THREE.GLTFLoader().load(Assets.UAL, (g) => {
+            const anims = [];
+            g.animations.forEach((c) => {
+              const short = c.name.split('|').pop();
+              c.name = short; anims.push(c);
+              Object.keys(Assets.ALIAS).forEach((a) => { if (Assets.ALIAS[a] === short) { const d = c.clone(); d.name = a; anims.push(d); } });
+            });
+            g.animations = anims; Assets.lib[key] = g; Assets.isUal = true; resolve(true);
+          }, undefined, () => setTimeout(() => go(n + 1), 800));
+        };
+        try { go(0); } catch (e) { resolve(false); }
+      });
+    },
+    tint(root, pal) {
+      root.traverse((o) => {
+        if (!(o.isMesh || o.isSkinnedMesh)) return;
+        const g = o.geometry.clone(); o.geometry = g;
+        const p = g.attributes.position; g.computeBoundingBox();
+        const y0 = g.boundingBox.min.y, h = g.boundingBox.max.y - y0 || 1;
+        const col = new Float32Array(p.count * 3), c = new THREE.Color();
+        for (let i = 0; i < p.count; i++) {
+          const f = (p.getY(i) - y0) / h, ax = Math.abs(p.getX(i)) / h;
+          let hex = pal.top;
+          if (f > 0.86) hex = pal.skin; else if (ax > 0.36) hex = pal.skin; else if (f < 0.5) hex = pal.bot;
+          if (f < 0.04) hex = pal.shoe;
+          c.setHex(hex).convertSRGBToLinear(); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+        }
+        g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+        o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 });
+      });
+    },
     load(key) {
+      if (Assets.UAL_OK !== false) {
+        return Assets.loadUal(key).then((ok) => { if (ok) return true; Assets.UAL_OK = false; return Assets.loadKay(key); });
+      }
+      return Assets.loadKay(key);
+    },
+    loadKay(key) {
       return new Promise((resolve) => {
         const urls = ['./game/assets/' + key + '.glb', Assets.CDN + Assets.FILES[key], Assets.CDN + Assets.FILES[key]];
         const tryNext = (i) => {
@@ -454,7 +505,10 @@
     },
     clone(key) {
       const src = Assets.lib[key];
-      return src ? THREE.SkeletonUtils.clone(src.scene) : null;
+      if (!src) return null;
+      const m = THREE.SkeletonUtils.clone(src.scene);
+      if (Assets.isUal) { Assets.tint(m, Assets.PALETTES[(Assets.nTint++) % Assets.PALETTES.length]); }
+      return m;
     },
     anims(key) { return Assets.lib[key] ? Assets.lib[key].animations : []; },
   };
