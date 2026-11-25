@@ -138,3 +138,22 @@ OSM ODbL (attributed) · Open-Meteo CC BY 4.0 · USGS/Aladhan/Nager/open.er-api 
 - Done in game.js rather than binary GLB surgery: same visual result, instantly tunable/reversible.
 - Verified live with screenshots: characters walk, animate and stand correctly.
 - Honesty note: this softens the childish proportions but the KayKit art style stays stylized. Truly adult-looking humans need a different character pack (e.g. realistic-proportioned rigged CC0 models) - possible future stage, needs Mohamed's call.
+
+## Characters and steering (v44 - v54) - live
+
+- v45: tried swapping to Quaternius Ultimate Animated characters. It failed visually and was rolled back in v46. The v44 state was restored first.
+- v47/v48: characters now use the Quaternius Universal Animation Library mannequin (CC0, loaded from the jsDelivr Papyszoo CDN), tinted per palette with vertex colors. A custom material on a SkinnedMesh needs skinning:true on r128 (that was the bug).
+- v49: steering. Left/right input swings the camera and the heading is smoothed. Drag still orbits.
+- v52: hair painted as vertex colors on the head.
+- v53: eye placement attempt. Eyes showed up as stray dots at the neck.
+- v54: eyes and nose removed. Hair is a dark cap, faces are blank. This is a stopgap, not a final look.
+- Not verified: run and jump animations. No FPS figures have been measured.
+
+## NILORA Lite (separate, web/lite/) - live
+
+- Simple translator: EN, Egyptian Arabic, FR, RU. Free MyMemory API, offline phrasebook, history, theme.
+- Call page: text call over an ntfy.sh topic with an 8-letter code. Optional WebRTC voice beta (not verified end to end, needs a TURN server on some networks).
+- Situations tab: offline cards (taxi, market, restaurant, metro, help) in four languages, full-screen with Play.
+- Egyptian layer: about 440 words and 50 patterns that swap formal Arabic output to Egyptian. It can sound stiff and is labelled in the UI.
+- Phrasebook: about 90 conversational phrases, partial-phrase matching, and a guard against one-word garbage from MyMemory.
+- Mic works on the user's phone (his screenshot). Speech voice depends on the phone and is usually not ar-EG.
