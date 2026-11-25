@@ -1,5 +1,5 @@
-const CACHE = 'nilora-v10';
-const SHELL = ['./', './index.html', './styles.css', './data.js', './globe.js', './app.js', './manifest.webmanifest', './icon.svg'];
+const CACHE = 'nilora-v11';
+const SHELL = ['./', './index.html', './styles.css', './data.js', './globe.js', './game.js', './app.js', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
