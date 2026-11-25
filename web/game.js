@@ -865,11 +865,31 @@
     },
   };
 
+  /* Adult proportions: KayKit rigs are chibi (big head, short legs). Slim the head,
+     lengthen the legs, then lift the rig root so the feet still plant on the road. */
+  function adultify(mesh) {
+    const bones = {};
+    mesh.traverse((o) => { bones[o.name] = o; });
+    const set = (n, sx, sy, sz) => { if (bones[n]) bones[n].scale.set(sx, sy, sz); };
+    set('head', 0.82, 0.82, 0.82);
+    set('spine', 1, 1.06, 1);
+    set('upperleg.l', 1, 1.22, 1); set('upperleg.r', 1, 1.22, 1);
+    set('lowerleg.l', 1, 1.18, 1); set('lowerleg.r', 1, 1.18, 1);
+    mesh.updateMatrixWorld(true);
+    if (bones.root && bones['foot.l'] && bones['foot.r']) {
+      const a = new THREE.Vector3(), b = new THREE.Vector3();
+      bones['foot.l'].getWorldPosition(a); bones['foot.r'].getWorldPosition(b);
+      const dip = Math.min(a.y, b.y);
+      if (dip < 0) bones.root.position.y -= dip;
+    }
+  }
+
   /* Animated human wrapper: mesh + mixer + simple state machine. */
   function makeHuman(key) {
     const mesh = Assets.clone(key);
     if (mesh) mesh.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) { o.castShadow = true; o.receiveShadow = false; } });
     if (!mesh) return null;
+    adultify(mesh);
     const mixer = new THREE.AnimationMixer(mesh);
     const clips = {};
     Assets.anims(key).forEach((c) => { clips[c.name] = c; });
