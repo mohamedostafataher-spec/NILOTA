@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a1330">
+<title>NILORA Call</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0a1330;--card:#111c3f;--line:#22305f;--gold:#d9b45b;--txt:#f2f4fa;--mut:#8e9ac0}
+:root[data-t=light]{--bg:#f6f1e6;--card:#fffdf8;--line:#e4dac3;--gold:#a8791a;--txt:#1d2540;--mut:#7a7466}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif}
+#app{max-width:520px;margin:0 auto;height:100%;display:flex;flex-direction:column;padding:0 16px 12px}
+header{padding:14px 2px;display:flex;justify-content:space-between;align-items:center}
+header b{letter-spacing:.2em;color:var(--gold);font-size:15px}
+header a{color:var(--mut);text-decoration:none;font-size:14px}
+select,input{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:14px;padding:12px;font-size:16px;width:100%;font-family:inherit}
+.box{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
+button.pr{width:100%;border:0;border-radius:16px;padding:15px;font-size:17px;font-weight:600;background:linear-gradient(145deg,#e8c670,#b8902f);color:#1a1a1a;margin-top:8px}
+button.sec{width:100%;border:1px solid var(--line);border-radius:16px;padding:14px;font-size:16px;background:transparent;color:var(--txt);margin-top:8px}
+button.red{background:#c0392b;color:#fff;border:0}
+label{color:var(--mut);font-size:13px;display:block;margin:8px 0 4px}
+.code{font-size:34px;letter-spacing:.3em;text-align:center;color:var(--gold);font-weight:700;padding:6px 0}
+.st{color:var(--mut);text-align:center;font-size:13px;min-height:18px;margin:4px 0}
+#log{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:4px 0}
+.m{max-width:85%;padding:10px 14px;border-radius:16px;background:var(--card);border:1px solid var(--line)}
+.m.me{align-self:flex-end}.m small{display:block;color:var(--mut);margin-top:4px}
+.m .t{font-size:19px;color:var(--gold)}
+.row{display:flex;gap:8px}.row>*{flex:1}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+<header><b>NILORA ☥ CALL</b><a href="./">← Translate</a></header>
+
+<section id="setup">
+ <div class="box">
+  <label>I speak</label><select id="lang"></select>
+  <button class="pr" id="create">Start a call</button>
+  <div class="st">You get a 6-letter code. Send it to the other person.</div>
+ </div>
+ <div class="box">
+  <label>Join with a code</label><input id="jc" placeholder="ABC123" maxlength="6" style="text-transform:uppercase;text-align:center;letter-spacing:.3em">
+  <button class="sec" id="join">Join call</button>
+ </div>
+ <div class="st" id="s0"></div>
+</section>
+
+<section id="wait" hidden>
+ <div class="box"><div class="st">Share this code</div><div class="code" id="mycode"></div>
+ <button class="sec" id="cpy">Copy invite link</button>
+ <div class="st" id="s1">Waiting for the other person…</div></div>
+</section>
+
+<section id="live" hidden style="flex:1;display:none;flex-direction:column;min-height:0">
+ <div class="st" id="s2"></div>
+ <div id="log"></div>
+ <div class="row" style="margin-top:8px"><input id="tx" placeholder="Type instead of speaking…"><button class="sec" id="send" style="margin:0;max-width:80px">Send</button></div>
+ <div class="row"><button class="sec" id="mute">🎤 Mic on</button><button class="sec" id="orig">🔈 Original voice: on</button></div>
+ <button class="pr red" id="end" style="color:#fff;background:#c0392b">End call</button>
+</section>
+</div>
+<audio id="ra" autoplay></audio>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+(function(){
+var L=[['en','English','en-US'],['ar','العربية (مصر)','ar-EG'],['fr','Français','fr-FR'],['ru','Русский','ru-RU']];
+var $=function(i){return document.getElementById(i)};
+var th=localStorage.getItem('nl.theme')||'dark';document.documentElement.setAttribute('data-t',th);
+L.forEach(function(l){$('lang').add(new Option(l[1],l[0]))});$('lang').value=localStorage.getItem('nl.from')||'ar';
+function code(c){for(var i=0;i<L.length;i++)if(L[i][0]===c)return L[i][2]}
+function show(id){['setup','wait','live'].forEach(function(x){var e=$(x);e.hidden=x!==id;if(x==='live')e.style.display=x===id?'flex':'none'})}
+var peer,conn,mycall,stream,rec,recOn=true,speaking=false,myLang,theirLang,isHost=false,micOk=false,origOn=true,alive=false;
+var API=function(from,to,q){return fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(q)+'&langpair='+from+'|'+to).then(function(r){return r.json()}).then(function(j){var t=j&&j.responseData&&j.responseData.translatedText;if(!t||/MYMEMORY WARNING/i.test(t))throw 0;return t.replace(/&#39;/g,"'").replace(/&quot;/g,'"')})};
+function add(who,text,sub){var d=document.createElement('div');d.className='m'+(who==='me'?' me':'');var t=document.createElement('div');t.className='t';t.textContent=text;t.dir='auto';d.appendChild(t);if(sub){var s=document.createElement('small');s.textContent=sub;s.dir='auto';d.appendChild(s)}$('log').appendChild(d);$('log').scrollTop=1e9}
+function speak(t,lang){if(!window.speechSynthesis){return}var u=new SpeechSynthesisUtterance(t);u.lang=code(lang);speaking=true;u.onend=u.onerror=function(){setTimeout(function(){speaking=false},400)};speechSynthesis.speak(u)}
+function mkcode(){var a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',s='';for(var i=0;i<6;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
+function getMic(){return navigator.mediaDevices&&navigator.mediaDevices.getUserMedia?navigator.mediaDevices.getUserMedia({audio:true}).then(function(s){stream=s;micOk=true}).catch(function(){micOk=false}):Promise.resolve()}
+function setupConn(c){conn=c;
+ c.on('open',function(){alive=true;c.send({t:'hi',lang:myLang});show('live');$('s2').textContent='Connected. Speak in your language.';startRec()});
+ c.on('data',function(d){if(!d)return;
+  if(d.t==='hi'){theirLang=d.lang;return}
+  if(d.t==='say'){var from=d.lang||theirLang||'en';
+   var done=function(tr,note){add('them',tr,d.text+(note?' ('+note+')':''));speak(tr,myLang)};
+   if(from===myLang)done(d.text);else API(from,myLang,d.text).then(function(t){done(t)}).catch(function(){add('them',d.text,'translation unavailable');});}
+ });
+ c.on('close',end);}
+function onCall(call){mycall=call;call.on('stream',function(s){$('ra').srcObject=s;$('ra').muted=!origOn})}
+function startRec(){var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){$('s2').textContent='Connected. This browser has no speech recognition: type your messages (Chrome works best).';return}
+ rec=new SR();rec.lang=code(myLang);rec.continuous=true;rec.interimResults=false;
+ rec.onresult=function(e){if(speaking||!recOn)return;for(var i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal){var t=e.results[i][0].transcript.trim();if(t)out(t)}}};
+ rec.onerror=function(e){if(e.error==='not-allowed'||e.error==='service-not-allowed')$('s2').textContent='Mic blocked: allow microphone, or type.'};
+ rec.onend=function(){if(alive&&recOn){try{rec.start()}catch(e){}}};
+ try{rec.start()}catch(e){}}
+function out(t){if(!conn||!conn.open)return;conn.send({t:'say',text:t,lang:myLang});add('me',t)}
+function end(){alive=false;try{rec&&rec.stop()}catch(e){}try{mycall&&mycall.close()}catch(e){}try{conn&&conn.close()}catch(e){}try{peer&&peer.destroy()}catch(e){}if(stream)stream.getTracks().forEach(function(t){t.stop()});$('s0').textContent='Call ended.';show('setup')}
+$('create').onclick=function(){myLang=$('lang').value;localStorage.setItem('nl.from',myLang);isHost=true;var c=mkcode();$('s0').textContent='Starting…';
+ getMic().then(function(){peer=new Peer('nilora-'+c);
+  peer.on('open',function(){$('mycode').textContent=c;show('wait')});
+  peer.on('connection',setupConn);
+  peer.on('call',function(call){onCall(call);call.answer(stream||undefined)});
+  peer.on('error',function(e){$('s0').textContent='Connection error: '+e.type;show('setup')})})};
+$('join').onclick=function(){var c=$('jc').value.trim().toUpperCase();if(c.length<6){$('s0').textContent='Enter the 6-letter code.';return}
+ myLang=$('lang').value;localStorage.setItem('nl.from',myLang);$('s0').textContent='Connecting…';
+ getMic().then(function(){peer=new Peer();
+  peer.on('open',function(){var cn=peer.connect('nilora-'+c,{reliable:true});setupConn(cn);
+   if(stream){var call=peer.call('nilora-'+c,stream);onCall(call)}});
+  peer.on('call',function(call){onCall(call);call.answer(stream||undefined)});
+  peer.on('error',function(e){$('s0').textContent=(e.type==='peer-unavailable'?'No call with that code.':'Connection error: '+e.type);show('setup')})})};
+$('send').onclick=function(){var v=$('tx').value.trim();if(v){out(v);$('tx').value=''}};
+$('tx').addEventListener('keydown',function(e){if(e.key==='Enter')$('send').onclick()});
+$('mute').onclick=function(){recOn=!recOn;if(stream)stream.getAudioTracks().forEach(function(t){t.enabled=recOn});$('mute').textContent=recOn?'🎤 Mic on':'🔇 Mic off';if(recOn&&rec){try{rec.start()}catch(e){}}};
+$('orig').onclick=function(){origOn=!origOn;$('ra').muted=!origOn;$('orig').textContent='🔈 Original voice: '+(origOn?'on':'off')};
+$('end').onclick=end;
+$('cpy').onclick=function(){var u=location.origin+location.pathname+'?join='+$('mycode').textContent;if(navigator.clipboard)navigator.clipboard.writeText(u);$('s1').textContent='Link copied'};
+var q=new URLSearchParams(location.search).get('join');if(q){$('jc').value=q.toUpperCase().slice(0,6)}
+window.NiloraCall={out:out,state:function(){return{alive:alive,myLang:myLang,theirLang:theirLang,micOk:micOk}}};
+})();
+</script>
+</body>
+</html>
