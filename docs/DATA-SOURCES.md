@@ -38,6 +38,17 @@ Note: characters are **stylized low-poly cartoon humans** (chibi proportions), n
 
 - Natural Earth shapefiles (`ne_10m_admin_0_countries`), geoBoundaries EGY ADM1/ADM2: downloaded for a different project, **not used by NILORA** and not in this repo. If ever added: Natural Earth = public domain; geoBoundaries = CC BY 4.0.
 
+## Added in v20-v22 (visual stages)
+
+| Source | License | Used for | How NILORA fetches it |
+| --- | --- | --- | --- |
+| Poly Haven (polyhaven.com), textures `aerial_asphalt_01`, `checkered_pavement_tiles` (1k JPG) | CC0 1.0 (verified on site) | Photo ground/pavement textures in the 3D city | Direct CDN image URLs (dl.polyhaven.org, CORS `*`), procedural canvas texture stays as fallback if the CDN fails |
+| OpenStreetMap via Overpass API (overpass.kumi.systems) | ODbL 1.0, "(c) OpenStreetMap contributors" | Real Downtown Cairo road network in the 3D city (391 ways baked to `web/cairo-roads.js`) | Baked offline to a static JS file; the game needs no API key at runtime |
+| Quaternius Universal Animation Library mirror (github.com/J-Ponzo/gltf-universal-animation-library) | CC0 1.0 (LICENSE in repo; Quaternius packs are CC0) | RESEARCHED, not used: 46 quality animations but Rigify `DEF-*` bone names do not match available character rigs (0/53 overlap), so in-app retargeting was rejected | n/a |
+| Quaternius Ultimate Modular Men/Women (github.com/trebeljahr/quaternius-showcase mirror) | CC0 1.0 (LICENSES.md per-pack table) | RESEARCHED, not used yet: adult-proportioned humans but rigged WITHOUT animations; pairing them with UAL clips needs offline retargeting | n/a |
+
+Honesty note: the player/pedestrian characters remain KayKit Adventurers (CC0, chibi proportions). No keyless, no-signup, CC0 source of REALISTIC rigged-and-animated humans exists on a fetchable CDN as of 2026-11-25; that is why characters stay stylized.
+
 ## Rules this repo follows
 
 1. No source may require an account, signup, or API key.
