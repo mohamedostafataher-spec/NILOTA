@@ -804,6 +804,7 @@ function renderGlobe() {
     <div id="globe" class="globe-wrap"></div>
     <div class="map-legend"><span>${i18n.globeHint}</span></div>
     <div id="globeCityCard" class="live-panel" style="display:none"></div>
+    <a class="hub-card" href="#/game" style="display:flex;margin-bottom:14px"><span class="hub-ico">🏙️</span><b>${i18n.gameCard || 'NILORA City 3D'}</b><small>${i18n.gameCardSub || 'Walk a first playable prototype city'}</small></a>
     <div class="soon-card" style="text-align:center"><p style="color:var(--gold-dark);font-weight:700">${i18n.tagline}</p></div>`;
 }
 
@@ -827,6 +828,7 @@ function renderExplore(view) {
       <span><i class="dot dot-story"></i>${i18n.legendStories}</span>
     </div>
     <div id="globeCityCard" class="live-panel" style="display:none"></div>
+    <a class="hub-card" href="#/game" style="display:flex;margin-bottom:14px"><span class="hub-ico">🏙️</span><b>${i18n.gameCard || 'NILORA City 3D'}</b><small>${i18n.gameCardSub || 'Walk a first playable prototype city'}</small></a>
     <div class="live-panel" id="eventPanel"><h3>🎉 ${i18n.eventTitle}</h3><div id="eventRows" class="rows"><span class="live-loading">${i18n.loading}</span></div></div>
     <div class="live-panel"><h3>🕌 ${i18n.prayerTitle}</h3><div id="prayerRows" class="rows"><span class="live-loading">${i18n.loading}</span></div></div>
     <div class="live-panel"><h3>🌋 ${i18n.quakeTitle}</h3><div id="quakeRows" class="rows"><span class="live-loading">${i18n.loading}</span></div></div>`;
@@ -1204,7 +1206,7 @@ function render() {
   updateHud();
   const TAB_OF = { home: 'home', explore: 'explore', map: 'explore', globe: 'explore', travel: 'explore', cards: 'explore',
     passport: 'passport', challenges: 'challenges', events: 'challenges',
-    journey: 'journey', memory: 'journey', saved: 'journey', about: 'journey', souk: 'journey' };
+    journey: 'journey', memory: 'journey', saved: 'journey', about: 'journey', souk: 'journey', game: 'explore' };
   const activeTab = TAB_OF[route] || 'home';
   document.querySelectorAll('.tab').forEach(tab =>
     tab.classList.toggle('active', tab.dataset.route === activeTab));
@@ -1215,6 +1217,7 @@ function render() {
   const EXPLORE_ROUTES = ['explore', 'map', 'globe'];
   if (mapObj) { mapObj.remove(); mapObj = null; }
   if (globeState) { globeState.dispose(); globeState = null; }
+  if (window.NiloraGame && route !== 'game') window.NiloraGame.stop();
   if (route === 'passport') app.innerHTML = renderPassport();
   else if (route === 'travel') app.innerHTML = renderTravel();
   else if (route === 'cards') app.innerHTML = renderCards();
@@ -1222,6 +1225,7 @@ function render() {
   else if (route === 'souk') app.innerHTML = renderSouk();
   else if (route === 'events') app.innerHTML = renderEvents();
   else if (route === 'challenges') app.innerHTML = renderChallenges();
+  else if (route === 'game') { app.innerHTML = ''; window.NiloraGame.start(app); }
   else if (route === 'journey' || route === 'memory' || route === 'saved' || route === 'about') app.innerHTML = renderJourney();
   else if (EXPLORE_ROUTES.includes(route)) {
     const view = route === 'map' ? 'map' : route === 'globe' ? 'globe' : exploreView;
@@ -1371,4 +1375,4 @@ render();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
-      }
+}
