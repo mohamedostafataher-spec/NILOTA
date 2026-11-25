@@ -188,6 +188,47 @@
     },
   };
 
+
+  /* ---------- Cairo: real OSM street network (ODbL, baked in cairo-roads.js) ---------- */
+  const Cairo = {
+    paths: [],
+    build() {
+      Cairo.paths = [];
+      const data = window.CAIRO_ROADS;
+      if (!data || !data.ways) return false;
+      const cLat = data.center[0], cLon = data.center[1];
+      const kx = 111320 * Math.cos(cLat * Math.PI / 180), kz = 110540;
+      const raw = data.ways.map((w) => ({
+        r: w.r, n: w.n, e: w.e,
+        pts: w.g.map((p) => [(p[1] - cLon) * kx, -(p[0] - cLat) * kz]),
+      }));
+      let maxE = 1;
+      raw.forEach((w) => w.pts.forEach((p) => { maxE = Math.max(maxE, Math.abs(p[0]), Math.abs(p[1])); }));
+      const s = 185 / maxE;
+      raw.forEach((w) => {
+        const pts = w.pts.map((p) => [p[0] * s, p[1] * s]);
+        const cum = [0];
+        for (let i = 1; i < pts.length; i++) {
+          cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+        }
+        Cairo.paths.push({ r: w.r, n: w.n, e: w.e, pts, cum, len: cum[cum.length - 1], width: [4, 6, 8, 10][w.r] });
+      });
+      Cairo.paths = Cairo.paths.filter((p) => p.len > 6);
+      return Cairo.paths.length > 10;
+    },
+    at(path, s) {
+      const c = path.cum, pts = path.pts;
+      let i = 1;
+      while (i < c.length - 1 && c[i] < s) i++;
+      const t = c[i] === c[i - 1] ? 0 : (s - c[i - 1]) / (c[i] - c[i - 1]);
+      const x = pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * t;
+      const z = pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * t;
+      const dx = pts[i][0] - pts[i - 1][0], dz = pts[i][1] - pts[i - 1][1];
+      const l = Math.hypot(dx, dz) || 1;
+      return { x, z, dx: dx / l, dz: dz / l };
+    },
+  };
+
   /* ---------- World: ground, streets, low-poly buildings, landmarks ---------- */
   const CITY = { size: 400, block: 34, road: 12 };
   const World = {
@@ -202,19 +243,7 @@
       ground.rotation.x = -Math.PI / 2;
       ground.receiveShadow = true;
       g.add(ground);
-      // streets (grid) slightly above ground
-      const aspX = Tex.asphalt(); aspX.repeat.set(1, CITY.size / 24);
-      const aspZ = Tex.asphalt(); aspZ.rotation = Math.PI / 2; aspZ.center.set(0.5, 0.5); aspZ.repeat.set(1, CITY.size / 24);
-      const roadMatX = new THREE.MeshLambertMaterial({ map: aspX });
-      const roadMatZ = new THREE.MeshLambertMaterial({ map: aspZ });
-      const half = CITY.size / 2, step = CITY.block + CITY.road;
-      for (let p = -half + step / 2; p < half; p += step) {
-        const rx = new THREE.Mesh(new THREE.PlaneGeometry(CITY.road, CITY.size), roadMatX);
-        rx.rotation.x = -Math.PI / 2; rx.position.set(p, 0.02, 0); rx.receiveShadow = true; g.add(rx);
-        const rz = new THREE.Mesh(new THREE.PlaneGeometry(CITY.size, CITY.road), roadMatZ);
-        rz.rotation.x = -Math.PI / 2; rz.position.set(0, 0.02, p); rz.receiveShadow = true; g.add(rz);
-      }
-      // buildings per block (skip landmark blocks)
+      // facade materials shared by both layouts
       const palette = ['#8f6b2f', '#31435e', '#4a5f7d', '#6b5330', '#22334d', '#9a7a3d'];
       const facades = palette.map((col) => {
         const f = Tex.facade(col, 6, 4);
@@ -222,51 +251,124 @@
         const top = new THREE.MeshLambertMaterial({ color: new THREE.Color(col).multiplyScalar(0.55) });
         return [side, side, top, top, side, side];
       });
-      const lm = World.landmarkCells();
       let seed = 42;
       const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
-      for (let bx = -half + step / 2; bx < half; bx += step) {
-        for (let bz = -half + step / 2; bz < half; bz += step) {
-          const key = Math.round(bx) + ',' + Math.round(bz);
-          if (lm[key]) continue;
-          const n = 2 + Math.floor(rnd() * 3);
-          for (let i = 0; i < n; i++) {
-            const w = 6 + rnd() * 9, d = 6 + rnd() * 9, h = 6 + rnd() * 26;
-            const x = bx + (rnd() - 0.5) * (CITY.block - w - 2);
-            const z = bz + (rnd() - 0.5) * (CITY.block - d - 2);
-            const m = new THREE.Mesh(
-              new THREE.BoxGeometry(w, h, d),
-              facades[Math.floor(rnd() * facades.length)]);
-            m.position.set(x, h / 2, z);
-            m.castShadow = true; m.receiveShadow = true;
+      const overlaps = (minX, maxX, minZ, maxZ) => World.colliders.some((c) => minX < c.maxX && maxX > c.minX && minZ < c.maxZ && maxZ > c.minZ);
+      const addBuilding = (x, z, w, d, h) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), facades[Math.floor(rnd() * facades.length)]);
+        m.position.set(x, h / 2, z);
+        m.castShadow = true; m.receiveShadow = true;
+        g.add(m);
+        World.colliders.push({ minX: x - w / 2 - 0.6, maxX: x + w / 2 + 0.6, minZ: z - d / 2 - 0.6, maxZ: z + d / 2 + 0.6, h: h });
+      };
+
+      const cairoOK = Cairo.build();
+      if (cairoOK) {
+        // real Cairo streets: textured ribbons + junction discs, buildings along them
+        const asp = Tex.asphalt(); asp.repeat.set(1, 1);
+        const roadMat = new THREE.MeshLambertMaterial({ map: asp });
+        Cairo.paths.forEach((p) => {
+          for (let i = 1; i < p.pts.length; i++) {
+            const [x0, z0] = p.pts[i - 1], [x1, z1] = p.pts[i];
+            const len = Math.hypot(x1 - x0, z1 - z0);
+            if (len < 0.5) continue;
+            const geo = new THREE.PlaneGeometry(len + p.width * 0.6, p.width);
+            geo.rotateX(-Math.PI / 2);
+            const m = new THREE.Mesh(geo, roadMat);
+            m.position.set((x0 + x1) / 2, 0.02, (z0 + z1) / 2);
+            m.rotation.y = -Math.atan2(z1 - z0, x1 - x0);
+            m.receiveShadow = true;
             g.add(m);
-            World.colliders.push({ minX: x - w / 2 - 0.6, maxX: x + w / 2 + 0.6, minZ: z - d / 2 - 0.6, maxZ: z + d / 2 + 0.6, h: h });
+          }
+        });
+        // buildings lining the streets
+        let placed = 0;
+        Cairo.paths.forEach((p) => {
+          for (let s = 8; s < p.len - 4 && placed < 260; s += 13 + rnd() * 8) {
+            for (const side of [-1, 1]) {
+              if (rnd() < 0.35 || placed >= 260) continue;
+              const at = Cairo.at(p, s);
+              const w = 6 + rnd() * 9, d = 6 + rnd() * 9, h = 7 + rnd() * 24;
+              const off = p.width / 2 + 1.5 + d / 2 + rnd() * 5;
+              const x = at.x + -at.dz * off * side;
+              const z = at.z + at.dx * off * side;
+              if (Math.abs(x) > 192 || Math.abs(z) > 192) continue;
+              const minX = x - w / 2 - 0.6, maxX = x + w / 2 + 0.6, minZ = z - d / 2 - 0.6, maxZ = z + d / 2 + 0.6;
+              if (overlaps(minX, maxX, minZ, maxZ)) continue;
+              addBuilding(x, z, w, d, h);
+              placed++;
+            }
+          }
+        });
+        // landmarks on major roads
+        const majors = Cairo.paths.filter((p) => p.r >= 2 && p.len > 30).sort((a, b) => b.len - a.len);
+        const picks = majors.slice(0, 5);
+        picks.forEach((p, i) => {
+          const at = Cairo.at(p, p.len / 2);
+          const nm = p.e || p.n;
+          const name = { en: nm ? String(nm).slice(0, 40) : 'Cairo Street ' + (i + 1), ar: p.n ? String(p.n).slice(0, 40) : 'شارع القاهرة ' + (i + 1) };
+          const ob = new THREE.Mesh(
+            new THREE.ConeGeometry(1.6, 7, 6),
+            new THREE.MeshLambertMaterial({ color: 0xd4af37, emissive: 0x6b5410 }));
+          ob.position.set(at.x, 3.5, at.z);
+          ob.castShadow = true;
+          g.add(ob);
+          const ring = new THREE.Mesh(
+            new THREE.RingGeometry(2.4, 3.2, 24),
+            new THREE.MeshBasicMaterial({ color: 0xd4af37, side: THREE.DoubleSide, transparent: true, opacity: 0.7 }));
+          ring.rotation.x = -Math.PI / 2; ring.position.set(at.x, 0.05, at.z);
+          g.add(ring);
+          World.landmarks.push({ id: 'lm' + i, name, x: at.x, z: at.z, mesh: ob, ring, found: false });
+        });
+      } else {
+        // fallback: procedural grid city
+        const aspX = Tex.asphalt(); aspX.repeat.set(1, CITY.size / 24);
+        const aspZ = Tex.asphalt(); aspZ.rotation = Math.PI / 2; aspZ.center.set(0.5, 0.5); aspZ.repeat.set(1, CITY.size / 24);
+        const roadMatX = new THREE.MeshLambertMaterial({ map: aspX });
+        const roadMatZ = new THREE.MeshLambertMaterial({ map: aspZ });
+        const half = CITY.size / 2, step = CITY.block + CITY.road;
+        for (let p = -half + step / 2; p < half; p += step) {
+          const rx = new THREE.Mesh(new THREE.PlaneGeometry(CITY.road, CITY.size), roadMatX);
+          rx.rotation.x = -Math.PI / 2; rx.position.set(p, 0.02, 0); rx.receiveShadow = true; g.add(rx);
+          const rz = new THREE.Mesh(new THREE.PlaneGeometry(CITY.size, CITY.road), roadMatZ);
+          rz.rotation.x = -Math.PI / 2; rz.position.set(0, 0.02, p); rz.receiveShadow = true; g.add(rz);
+        }
+        const lm = World.landmarkCells();
+        for (let bx = -half + step / 2; bx < half; bx += step) {
+          for (let bz = -half + step / 2; bz < half; bz += step) {
+            const key = Math.round(bx) + ',' + Math.round(bz);
+            if (lm[key]) continue;
+            const n = 2 + Math.floor(rnd() * 3);
+            for (let i = 0; i < n; i++) {
+              const w = 6 + rnd() * 9, d = 6 + rnd() * 9, h = 6 + rnd() * 26;
+              const x = bx + (rnd() - 0.5) * (CITY.block - w - 2);
+              const z = bz + (rnd() - 0.5) * (CITY.block - d - 2);
+              addBuilding(x, z, w, d, h);
+            }
           }
         }
+        const NAMES = [
+          { en: 'Cairo Tower', ar: 'برج القاهرة' }, { en: 'Khan el-Khalili Gate', ar: 'بوابة خان الخليلي' },
+          { en: 'Nile Corniche', ar: 'كورنيش النيل' }, { en: 'Citadel View', ar: 'إطلالة القلعة' },
+          { en: 'Pyramids Road', ar: 'طريق الأهرام' }];
+        NAMES.forEach((name, i) => {
+          const cell = World.lmCells[i];
+          const ob = new THREE.Mesh(
+            new THREE.ConeGeometry(1.6, 7, 6),
+            new THREE.MeshLambertMaterial({ color: 0xd4af37, emissive: 0x6b5410 }));
+          ob.position.set(cell.x, 3.5, cell.z);
+          ob.castShadow = true;
+          g.add(ob);
+          const ring = new THREE.Mesh(
+            new THREE.RingGeometry(2.4, 3.2, 24),
+            new THREE.MeshBasicMaterial({ color: 0xd4af37, side: THREE.DoubleSide, transparent: true, opacity: 0.7 }));
+          ring.rotation.x = -Math.PI / 2; ring.position.set(cell.x, 0.05, cell.z);
+          g.add(ring);
+          World.landmarks.push({ id: 'lm' + i, name, x: cell.x, z: cell.z, mesh: ob, ring, found: false });
+        });
       }
-      // landmark discovery points
-      const NAMES = [
-        { en: 'Cairo Tower', ar: 'برج القاهرة' }, { en: 'Khan el-Khalili Gate', ar: 'بوابة خان الخليلي' },
-        { en: 'Nile Corniche', ar: 'كورنيش النيل' }, { en: 'Citadel View', ar: 'إطلالة القلعة' },
-        { en: 'Pyramids Road', ar: 'طريق الأهرام' }];
-      NAMES.forEach((name, i) => {
-        const cell = World.lmCells[i];
-        const ob = new THREE.Mesh(
-          new THREE.ConeGeometry(1.6, 7, 6),
-          new THREE.MeshLambertMaterial({ color: 0xd4af37, emissive: 0x6b5410 }));
-        ob.position.set(cell.x, 3.5, cell.z);
-        ob.castShadow = true;
-        g.add(ob);
-        const ring = new THREE.Mesh(
-          new THREE.RingGeometry(2.4, 3.2, 24),
-          new THREE.MeshBasicMaterial({ color: 0xd4af37, side: THREE.DoubleSide, transparent: true, opacity: 0.7 }));
-        ring.rotation.x = -Math.PI / 2; ring.position.set(cell.x, 0.05, cell.z);
-        g.add(ring);
-        World.landmarks.push({ id: 'lm' + i, name, x: cell.x, z: cell.z, mesh: ob, ring, found: false });
-      });
       scene.add(g);
       World.group = g;
-      PhotoTex.apply([roadMatX, roadMatZ], PhotoTex.ASPHALT, CITY.size / 30, CITY.size / 30, 0x8a94a8);
       PhotoTex.apply([ground.material], PhotoTex.PAVING, CITY.size / 14, CITY.size / 14, 0x76839c);
     },
     lmCells: [{ x: -69, z: -69 }, { x: 69, z: -69 }, { x: 0, z: 0 }, { x: -69, z: 69 }, { x: 69, z: 69 }],
@@ -358,12 +460,28 @@
         scene.add(h.mesh);
         h.play('Walking_A', 0);
         h.mixer.update(rnd() * 2); // desync strides
-        Pedestrians.list.push({ h, horizontal, lane, pos, speed });
+        const roads = Cairo.paths.filter((p) => p.r >= 0);
+        if (roads.length) {
+          const path = roads[Math.floor(rnd() * roads.length)];
+          Pedestrians.list.push({ h, path, pos: rnd() * path.len, dir: rnd() > 0.5 ? 1 : -1, speed: 1.6 + rnd() * 1.4 });
+        } else {
+          Pedestrians.list.push({ h, horizontal, lane, pos, speed });
+        }
       }
     },
     update(dt) {
       const lim = CITY.size / 2 + 4;
       Pedestrians.list.forEach((p) => {
+        if (p.path) {
+          p.pos += p.dir * p.speed * dt;
+          if (p.pos > p.path.len || p.pos < 0) { p.dir *= -1; p.pos = Math.max(0, Math.min(p.path.len, p.pos)); }
+          const at = Cairo.at(p.path, p.pos);
+          const off = p.path.width / 2 - 1.1;
+          p.h.mesh.position.set(at.x + -at.dz * off * p.dir, 0, at.z + at.dx * off * p.dir);
+          p.h.mesh.rotation.y = Math.atan2(at.dx * p.dir, at.dz * p.dir);
+          p.h.mixer.update(dt);
+          return;
+        }
         p.pos += p.speed * dt;
         if (p.pos > lim) p.pos = -lim;
         if (p.pos < -lim) p.pos = lim;
@@ -398,16 +516,36 @@
         car.position.y = 0.6;
         car.castShadow = true;
         scene.add(car);
-        Vehicles.cars.push({
-          mesh: car, horizontal, lane,
-          pos: (rnd() - 0.5) * CITY.size,
-          speed: (8 + rnd() * 7) * (rnd() > 0.5 ? 1 : -1),
-        });
+        const roads = Cairo.paths.filter((p) => p.r >= 1);
+        if (roads.length) {
+          const path = roads[Math.floor(rnd() * roads.length)];
+          Vehicles.cars.push({
+            mesh: car, path,
+            pos: rnd() * path.len,
+            dir: rnd() > 0.5 ? 1 : -1,
+            speed: 8 + rnd() * 7,
+          });
+        } else {
+          Vehicles.cars.push({
+            mesh: car, horizontal, lane,
+            pos: (rnd() - 0.5) * CITY.size,
+            speed: (8 + rnd() * 7) * (rnd() > 0.5 ? 1 : -1),
+          });
+        }
       }
     },
     update(dt) {
       const lim = CITY.size / 2 + 6;
       Vehicles.cars.forEach((c) => {
+        if (c.path) {
+          c.pos += c.dir * Math.abs(c.speed) * dt;
+          if (c.pos > c.path.len) c.pos = 0;
+          const at = Cairo.at(c.path, c.pos);
+          const off = c.path.width / 4;
+          c.mesh.position.set(at.x + -at.dz * off * c.dir, 0.6, at.z + at.dx * off * c.dir);
+          c.mesh.rotation.y = -Math.atan2(at.dz * c.dir, at.dx * c.dir);
+          return;
+        }
         c.pos += c.speed * dt;
         if (c.pos > lim) c.pos = -lim;
         if (c.pos < -lim) c.pos = lim;
@@ -785,6 +923,14 @@
       World.build(scene);
       Vehicles.cars = []; Vehicles.build(scene);
       Drive.build(scene);
+      if (Cairo.paths.length) {
+        const majors = Cairo.paths.filter((p) => p.r >= 2).sort((a, b) => b.len - a.len);
+        const p0 = majors[0] || Cairo.paths[0];
+        const at = Cairo.at(p0, p0.len / 2);
+        Player.x = at.x; Player.z = at.z;
+        Drive.x = at.x + 4; Drive.z = at.z + 4;
+        if (Drive.mesh) { Drive.mesh.position.set(Drive.x, 0, Drive.z); Drive.heading = Math.atan2(at.dx, at.dz); Drive.mesh.rotation.y = Drive.heading; }
+      }
       HUD.mount(host);
       HUD.toast('⏳ loading city…');
       await Assets.loadAll();
