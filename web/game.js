@@ -87,6 +87,76 @@
     },
   };
 
+
+  /* ---------- Procedural textures (canvas-generated, free, zero-download) ---------- */
+  const Tex = {
+    make(w, h, fn) {
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      fn(c.getContext('2d'), w, h);
+      const t = new THREE.CanvasTexture(c);
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.anisotropy = 4;
+      return t;
+    },
+    noise(ctx, w, h, n, alpha) {
+      for (let i = 0; i < n; i++) {
+        const v = Math.floor(Math.random() * 40);
+        ctx.fillStyle = 'rgba(' + (v + 10) + ',' + (v + 12) + ',' + (v + 18) + ',' + alpha + ')';
+        ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+      }
+    },
+    asphalt() {
+      return Tex.make(64, 256, (ctx, w, h) => {
+        ctx.fillStyle = '#232d3f'; ctx.fillRect(0, 0, w, h);
+        Tex.noise(ctx, w, h, 500, 0.25);
+        ctx.fillStyle = '#c8b568';
+        ctx.fillRect(w / 2 - 2, 20, 4, 60);
+        ctx.fillRect(w / 2 - 2, 140, 4, 60);
+        ctx.fillStyle = 'rgba(200,181,104,0.85)';
+        ctx.fillRect(2, 0, 2, h); ctx.fillRect(w - 4, 0, 2, h);
+      });
+    },
+    pavement() {
+      return Tex.make(128, 128, (ctx, w, h) => {
+        ctx.fillStyle = '#1c2942'; ctx.fillRect(0, 0, w, h);
+        Tex.noise(ctx, w, h, 350, 0.18);
+        ctx.strokeStyle = 'rgba(10,16,28,0.55)'; ctx.lineWidth = 2;
+        for (let i = 0; i <= 2; i++) {
+          ctx.beginPath(); ctx.moveTo(0, i * h / 2); ctx.lineTo(w, i * h / 2); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(i * w / 2, 0); ctx.lineTo(i * w / 2, h); ctx.stroke();
+        }
+      });
+    },
+    facade(base, rows, cols) {
+      return Tex.make(256, 256, (ctx, w, h) => {
+        ctx.fillStyle = base; ctx.fillRect(0, 0, w, h);
+        Tex.noise(ctx, w, h, 300, 0.10);
+        const cw = w / cols, ch = h / rows;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const lit = Math.random() < 0.28;
+            ctx.fillStyle = lit ? '#ffca7a' : '#0d1524';
+            ctx.fillRect(c * cw + cw * 0.22, r * ch + ch * 0.22, cw * 0.56, ch * 0.5);
+            if (lit) { ctx.fillStyle = 'rgba(255,202,122,0.25)'; ctx.fillRect(c * cw + cw * 0.16, r * ch + ch * 0.16, cw * 0.68, ch * 0.62); }
+          }
+        }
+      });
+    },
+    sky() {
+      const t = Tex.make(16, 512, (ctx, w, h) => {
+        const gr = ctx.createLinearGradient(0, 0, 0, h);
+        gr.addColorStop(0.0, '#060b16');
+        gr.addColorStop(0.45, '#0e1a30');
+        gr.addColorStop(0.72, '#3a3050');
+        gr.addColorStop(0.86, '#8a5a34');
+        gr.addColorStop(1.0, '#d4af37');
+        ctx.fillStyle = gr; ctx.fillRect(0, 0, w, h);
+      });
+      t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+      return t;
+    },
+  };
+
   /* ---------- World: ground, streets, low-poly buildings, landmarks ---------- */
   const CITY = { size: 400, block: 34, road: 12 };
   const World = {
@@ -94,22 +164,33 @@
     build(scene) {
       const g = new THREE.Group();
       // ground
+      const paveTex = Tex.pavement(); paveTex.repeat.set(CITY.size / 10, CITY.size / 10);
       const ground = new THREE.Mesh(
         new THREE.PlaneGeometry(CITY.size, CITY.size),
-        new THREE.MeshLambertMaterial({ color: 0x14243b }));
+        new THREE.MeshStandardMaterial({ map: paveTex, roughness: 0.95, metalness: 0 }));
       ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
       g.add(ground);
       // streets (grid) slightly above ground
-      const roadMat = new THREE.MeshLambertMaterial({ color: 0x2a3a52 });
+      const aspX = Tex.asphalt(); aspX.repeat.set(1, CITY.size / 24);
+      const aspZ = Tex.asphalt(); aspZ.rotation = Math.PI / 2; aspZ.center.set(0.5, 0.5); aspZ.repeat.set(1, CITY.size / 24);
+      const roadMatX = new THREE.MeshStandardMaterial({ map: aspX, roughness: 0.9, metalness: 0 });
+      const roadMatZ = new THREE.MeshStandardMaterial({ map: aspZ, roughness: 0.9, metalness: 0 });
       const half = CITY.size / 2, step = CITY.block + CITY.road;
       for (let p = -half + step / 2; p < half; p += step) {
-        const rx = new THREE.Mesh(new THREE.PlaneGeometry(CITY.road, CITY.size), roadMat);
-        rx.rotation.x = -Math.PI / 2; rx.position.set(p, 0.02, 0); g.add(rx);
-        const rz = new THREE.Mesh(new THREE.PlaneGeometry(CITY.size, CITY.road), roadMat);
-        rz.rotation.x = -Math.PI / 2; rz.position.set(0, 0.02, p); g.add(rz);
+        const rx = new THREE.Mesh(new THREE.PlaneGeometry(CITY.road, CITY.size), roadMatX);
+        rx.rotation.x = -Math.PI / 2; rx.position.set(p, 0.02, 0); rx.receiveShadow = true; g.add(rx);
+        const rz = new THREE.Mesh(new THREE.PlaneGeometry(CITY.size, CITY.road), roadMatZ);
+        rz.rotation.x = -Math.PI / 2; rz.position.set(0, 0.02, p); rz.receiveShadow = true; g.add(rz);
       }
       // buildings per block (skip landmark blocks)
-      const palette = [0x8f6b2f, 0x31435e, 0x4a5f7d, 0x6b5330, 0x22334d, 0x9a7a3d];
+      const palette = ['#8f6b2f', '#31435e', '#4a5f7d', '#6b5330', '#22334d', '#9a7a3d'];
+      const facades = palette.map((col) => {
+        const t = Tex.facade(col, 6, 4);
+        const side = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, metalness: 0 });
+        const top = new THREE.MeshStandardMaterial({ color: new THREE.Color(col).multiplyScalar(0.55), roughness: 0.95, metalness: 0 });
+        return [side, side, top, top, side, side];
+      });
       const lm = World.landmarkCells();
       let seed = 42;
       const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
@@ -124,8 +205,9 @@
             const z = bz + (rnd() - 0.5) * (CITY.block - d - 2);
             const m = new THREE.Mesh(
               new THREE.BoxGeometry(w, h, d),
-              new THREE.MeshLambertMaterial({ color: palette[Math.floor(rnd() * palette.length)] }));
+              facades[Math.floor(rnd() * facades.length)]);
             m.position.set(x, h / 2, z);
+            m.castShadow = true; m.receiveShadow = true;
             g.add(m);
             World.colliders.push({ minX: x - w / 2 - 0.6, maxX: x + w / 2 + 0.6, minZ: z - d / 2 - 0.6, maxZ: z + d / 2 + 0.6 });
           }
@@ -140,8 +222,9 @@
         const cell = World.lmCells[i];
         const ob = new THREE.Mesh(
           new THREE.ConeGeometry(1.6, 7, 6),
-          new THREE.MeshLambertMaterial({ color: 0xd4af37, emissive: 0x6b5410 }));
+          new THREE.MeshStandardMaterial({ color: 0xd4af37, emissive: 0x6b5410, roughness: 0.4, metalness: 0.6 }));
         ob.position.set(cell.x, 3.5, cell.z);
+        ob.castShadow = true;
         g.add(ob);
         const ring = new THREE.Mesh(
           new THREE.RingGeometry(2.4, 3.2, 24),
@@ -202,6 +285,7 @@
   /* Animated human wrapper: mesh + mixer + simple state machine. */
   function makeHuman(key) {
     const mesh = Assets.clone(key);
+    if (mesh) mesh.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) { o.castShadow = true; o.receiveShadow = false; } });
     if (!mesh) return null;
     const mixer = new THREE.AnimationMixer(mesh);
     const clips = {};
@@ -279,6 +363,7 @@
           new THREE.BoxGeometry(3.4, 1.2, 1.7),
           new THREE.MeshLambertMaterial({ color: colors[Math.floor(rnd() * colors.length)] }));
         car.position.y = 0.6;
+        car.castShadow = true;
         scene.add(car);
         Vehicles.cars.push({
           mesh: car, horizontal, lane,
@@ -325,6 +410,7 @@
         w.rotation.z = Math.PI / 2; w.position.set(x, 0.38, z);
         g.add(w);
       });
+      g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
       g.position.set(Drive.x, 0, Drive.z);
       g.rotation.y = Drive.heading;
       scene.add(g);
@@ -599,18 +685,38 @@
 
       const canvas = host.querySelector('#gcity');
       const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
       Game.renderer = renderer;
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x0b1420);
-      scene.fog = new THREE.Fog(0x0b1420, 60, 220);
+      scene.fog = new THREE.Fog(0x1a2233, 60, 260);
       Game.scene = scene;
-      const camera = new THREE.PerspectiveCamera(62, 2, 0.1, 500);
+      const camera = new THREE.PerspectiveCamera(62, 2, 0.1, 900);
       Game.camera = camera;
 
-      scene.add(new THREE.AmbientLight(0x8090b0, 0.55));
-      const sun = new THREE.DirectionalLight(0xffe0a3, 0.9);
-      sun.position.set(80, 120, 40);
-      scene.add(sun);
+      const skyDome = new THREE.Mesh(
+        new THREE.SphereGeometry(430, 24, 16),
+        new THREE.MeshBasicMaterial({ map: Tex.sky(), side: THREE.BackSide, fog: false, depthWrite: false }));
+      skyDome.renderOrder = -1;
+      scene.add(skyDome);
+      Game.skyDome = skyDome;
+
+      scene.add(new THREE.HemisphereLight(0x4a5f8d, 0x2a2018, 0.75));
+      scene.add(new THREE.AmbientLight(0x8090b0, 0.25));
+      const sun = new THREE.DirectionalLight(0xffc37a, 1.25);
+      sun.position.set(70, 95, 35);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048);
+      sun.shadow.camera.left = -80; sun.shadow.camera.right = 80;
+      sun.shadow.camera.top = 80; sun.shadow.camera.bottom = -80;
+      sun.shadow.camera.near = 1; sun.shadow.camera.far = 320;
+      sun.shadow.bias = -0.0015;
+      scene.add(sun); scene.add(sun.target);
+      Game.sun = sun;
 
       World.colliders = []; World.landmarks = [];
       World.build(scene);
@@ -653,6 +759,13 @@
           Pedestrians.update(dt);
           FollowCam.update(camera);
           Mission.update();
+          const px = Drive.active ? Drive.x : Player.x, pz = Drive.active ? Drive.z : Player.z;
+          if (Game.sun) {
+            Game.sun.position.set(px + 70, 95, pz + 35);
+            Game.sun.target.position.set(px, 0, pz);
+            Game.sun.target.updateMatrixWorld();
+          }
+          if (Game.skyDome) Game.skyDome.position.set(px, 0, pz);
           renderer.render(scene, camera);
           Game.frames++;
           if (now - Game.fpsT >= 1000) {
@@ -668,6 +781,7 @@
     applyQuality() {
       const pr = Game.hq ? Math.min(window.devicePixelRatio || 1, 2) : 1;
       Game.renderer.setPixelRatio(pr);
+      if (Game.sun) Game.sun.castShadow = Game.hq;
       Game.resize();
     },
     resize() {
