@@ -35,7 +35,7 @@ nav button{flex:1;background:none;border:0;color:var(--mut);padding:10px 0 12px;
 nav button span{display:block;font-size:22px}
 nav button.on{color:var(--gold)}
 .hist{padding:10px 0;border-bottom:1px solid var(--line)}.hist small{color:var(--mut)}
-[hidden]{display:none!important}
+[hidden]{display:none!important}#show[hidden]{display:none!important}
 .chips::-webkit-scrollbar{display:none}</style>
 </head>
 <body>
@@ -50,11 +50,14 @@ nav button.on{color:var(--gold)}
  <button class="mic" id="mic">🎤</button>
  <div class="hint" id="hint"></div>
 </section>
+<section id="sit" hidden><div class="chips" id="cats"></div><div class="box" id="sitl"></div><div class="hint">Tap a card to show it full screen, in the language of the person you are talking to (the right-hand language above).</div></section>
 <section id="hs" hidden><div class="box" id="hsl"></div></section>
 <section id="st" hidden><div class="box"><div class="set"><span>Theme</span><button class="ic" id="th">Dark / Light</button></div><div class="set"><span>Clear history</span><button class="ic" id="ch">Clear</button></div><div class="set"><span>Voice replies</span><button class="ic" id="vr">On</button></div><div class="hint" style="margin-top:12px">NILORA Lite. Translation needs a connection, quick phrases work offline.</div></div></section>
 </main>
+<div id="show" hidden style="position:fixed;inset:0;background:var(--bg);z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center"><div id="sh1" style="font-size:38px;color:var(--gold);line-height:1.4;font-weight:700"></div><div id="sh2" style="font-size:18px;color:var(--mut);margin-top:14px"></div><div id="sh3" style="font-size:15px;color:var(--mut);margin-top:6px"></div><button class="ic" id="shs" style="margin-top:28px;font-size:18px;padding:12px 22px">🔊 Play</button><button class="ic" id="shx" style="margin-top:12px">Close</button></div>
 <nav>
  <button id="n1" class="on"><span>🌐</span>Translate</button>
+ <button id="n5"><span>🧭</span>Situations</button>
  <button id="n4" onclick="location.href='call.html'"><span>📞</span>Call</button>
  <button id="n2"><span>🕘</span>History</button>
  <button id="n3"><span>⚙️</span>Settings</button>
@@ -81,7 +84,7 @@ var PH={ // offline phrasebook (EN source)
  'Do you speak English?':{ar:'بتتكلم إنجليزي؟',fr:'Parlez-vous anglais ?',ru:'Вы говорите по-английски?'},
  'Call the police':{ar:'اتصل بالشرطة',fr:'Appelez la police',ru:'Вызовите полицию'}
 };
-function tab(n){['tr','hs','st'].forEach(function(x,i){$(x).hidden=(i!==n);$('n'+(i+1)).className=i===n?'on':''});if(n===1)hist()}
+function tab(n){['tr','hs','st'].forEach(function(x,i){$(x).hidden=(i!==n);$('n'+(i+1)).className=i===n?'on':''});$('sit').hidden=true;$('n5').className='';if(n===1)hist()}
 $('n1').onclick=function(){tab(0)};$('n2').onclick=function(){tab(1)};$('n3').onclick=function(){tab(2)};
 var theme=localStorage.getItem('nl.theme')||'dark';function ap(){document.documentElement.setAttribute('data-t',theme)}ap();
 $('th').onclick=function(){theme=theme==='dark'?'light':'dark';localStorage.setItem('nl.theme',theme);ap()};
@@ -150,6 +153,17 @@ $('mic').onclick=function(){
  hint.textContent='Asking for microphone…';
  preflight().then(function(){begin(code(from.value),false)}).catch(function(c){showHint(micErr(c))})};
 $('net').title=diag();window.NiloraMic={diag:diag};
+var SIT={"🚕 Taxi": [["Please use the meter", "شغّل العداد لو سمحت", "shaghal el-addaad law samaht", "Mettez le compteur, s'il vous plaît", "Включите счётчик, пожалуйста"], ["Take me to this address", "وصّلني للعنوان ده", "wassalni lel-ʿenwaan da", "Emmenez-moi à cette adresse", "Отвезите меня по этому адресу"], ["Stop here, please", "وقّف هنا لو سمحت", "ewwaʾaf hena law samaht", "Arrêtez-vous ici, s'il vous plaît", "Остановитесь здесь, пожалуйста"], ["How much to go there?", "بكام المشوار ده؟", "bekaam el-mashwaar da?", "Combien pour aller là-bas ?", "Сколько стоит доехать туда?"], ["Too expensive, I'll take another", "غالي، هاخد واحد تاني", "ghaali, haakhod waahed taani", "Trop cher, je prends un autre", "Слишком дорого, я возьму другое"]], "🛍️ Market": [["How much is this?", "بكام ده؟", "bekaam da?", "Combien ça coûte ?", "Сколько это стоит?"], ["Too expensive", "غالي أوي", "ghaali awi", "Trop cher", "Слишком дорого"], ["Last price?", "آخر سعر؟", "aakhir siʿr?", "Dernier prix ?", "Последняя цена?"], ["I'm just looking, thank you", "بتفرّج بس، شكراً", "batfarrag bas, shukran", "Je regarde seulement, merci", "Я просто смотрю, спасибо"], ["Can you lower the price?", "ممكن تنزّل السعر؟", "momken tenazzel el-siʿr?", "Pouvez-vous baisser le prix ?", "Можете снизить цену?"]], "🍽️ Restaurant": [["A table for two, please", "ترابيزة لاتنين لو سمحت", "tarabeiza le-etnein law samaht", "Une table pour deux, s'il vous plaît", "Столик на двоих, пожалуйста"], ["The menu, please", "المنيو لو سمحت", "el-menu law samaht", "Le menu, s'il vous plaît", "Меню, пожалуйста"], ["Without spicy food", "من غير حرّاق", "men gheir harraaʾ", "Sans piment", "Без острого"], ["Water, please", "مية لو سمحت", "mayya law samaht", "De l'eau, s'il vous plaît", "Воды, пожалуйста"], ["The bill, please", "الحساب لو سمحت", "el-hesaab law samaht", "L'addition, s'il vous plaît", "Счёт, пожалуйста"]], "🚇 Metro & transport": [["Where is the metro station?", "محطة المترو فين؟", "maHattet el-metro fein?", "Où est la station de métro ?", "Где станция метро?"], ["One ticket, please", "تذكرة واحدة لو سمحت", "tazkara waHda law samaht", "Un billet, s'il vous plaît", "Один билет, пожалуйста"], ["Which line goes to Tahrir?", "أنهي خط بيروح التحرير؟", "enhi khatt beyrooh el-Tahrir?", "Quelle ligne va à Tahrir ?", "Какая линия идёт до Тахрира?"], ["Is this the right way?", "هو ده الطريق الصح؟", "howa da el-tareeʾ el-saH?", "C'est la bonne direction ?", "Это правильная дорога?"]], "🆘 Help": [["I need help", "محتاج مساعدة", "meHtaag musaʿda", "J'ai besoin d'aide", "Мне нужна помощь"], ["Call the police", "اتصل بالشرطة", "ettasel bel-shorta", "Appelez la police", "Вызовите полицию"], ["I need a doctor", "محتاج دكتور", "meHtaag doktoor", "J'ai besoin d'un médecin", "Мне нужен врач"], ["I am lost", "أنا تايه", "ana taaye7", "Je suis perdu", "Я заблудился"], ["Please leave me alone", "لو سمحت سيبني في حالي", "law samaht seebni fi Haali", "Laissez-moi tranquille, s'il vous plaît", "Пожалуйста, оставьте меня в покое"]]};
+
+function tab5(){['tr','hs','st','sit'].forEach(function(x,i){$(x).hidden=(x!=='sit')});['n1','n2','n3','n5'].forEach(function(x){$(x).className=''});$('n5').className='on';cats()}
+$('n5').onclick=tab5;
+var curCat=Object.keys(SIT)[0];
+function cats(){$('cats').innerHTML=Object.keys(SIT).map(function(k){return '<button data-k="'+k+'"'+(k===curCat?' style="border-color:var(--gold);color:var(--gold)"':'')+'>'+k+'</button>'}).join('');
+ [].forEach.call($('cats').children,function(b){b.onclick=function(){curCat=b.getAttribute('data-k');cats()}});
+ var idx={en:0,ar:1,fr:3,ru:4};$('sitl').innerHTML=SIT[curCat].map(function(p,i){return '<div class="ph" data-i="'+i+'"><div>'+p[0]+'</div><div'+(to.value==='ar'?' dir="rtl"':'')+'>'+p[idx[to.value]]+'</div></div>'}).join('');
+ [].forEach.call($('sitl').children,function(el){el.onclick=function(){showCard(SIT[curCat][+el.getAttribute('data-i')])}})}
+function showCard(p){var l=to.value,idx={en:0,ar:1,fr:3,ru:4};var t=p[idx[l]];$('sh1').textContent=t;$('sh1').dir=l==='ar'?'rtl':'ltr';$('sh2').textContent=l==='ar'?p[2]:'';$('sh3').textContent=from.value==='ar'?p[1]:p[0];$('show').hidden=false;
+ $('shs').onclick=function(){var v=voice;voice=true;speak(t,l);voice=v};$('shx').onclick=function(){$('show').hidden=true;speechSynthesis&&speechSynthesis.cancel()}}
 function chips(){var h='';Object.keys(PH).forEach(function(k){h+='<button data-k="'+k.replace(/"/g,'&quot;')+'">'+k+'</button>'});$('chips').innerHTML=h;[].forEach.call($('chips').children,function(el){el.onclick=function(){from.value='en';if(to.value==='en')to.value='ar';src.value=el.getAttribute('data-k');translate();setTimeout(function(){speak(out.textContent,to.value)},300)}})}
 chips();
 function hist(){$('hsl').innerHTML=H.length?H.map(function(x){return '<div class="hist"><small>'+x.f+' → '+x.t+'</small><div>'+esc(x.a)+'</div><div style="color:var(--gold)">'+esc(x.b)+'</div></div>'}).join(''):'<div class="hint">Nothing yet.</div>'}
