@@ -716,7 +716,7 @@
       const off = document.createElement('canvas');
       off.width = S; off.height = S;
       const c = off.getContext('2d');
-      c.fillStyle = 'rgba(8,14,26,0.88)';
+      c.fillStyle = 'rgba(16,26,44,0.9)';
       c.beginPath(); c.arc(S / 2, S / 2, S / 2 - 2, 0, Math.PI * 2); c.fill();
       let maxE = 185;
       Cairo.paths.forEach((p) => p.pts.forEach((pt) => { maxE = Math.max(maxE, Math.abs(pt[0]), Math.abs(pt[1])); }));
@@ -724,10 +724,10 @@
       const px = (x, z) => [S / 2 + x * Minimap.scale, S / 2 + z * Minimap.scale];
       c.save();
       c.beginPath(); c.arc(S / 2, S / 2, S / 2 - 2, 0, Math.PI * 2); c.clip();
-      const cols = ['#3d4c66', '#5a6c8c', '#7d90b3', '#a9b8d4'];
+      const cols = ['#6f83ad', '#8fa3cc', '#b4c6e8', '#dbe6fb'];
       Cairo.paths.forEach((p) => {
         c.strokeStyle = cols[p.r] || cols[0];
-        c.lineWidth = [1, 1.5, 2.5, 3.5][p.r] || 1;
+        c.lineWidth = [1.4, 2, 3, 4][p.r] || 1.4;
         c.beginPath();
         p.pts.forEach((pt, i) => {
           const [mx, my] = px(pt[0], pt[1]);
