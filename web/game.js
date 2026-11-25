@@ -553,6 +553,22 @@
       wrap.add(mesh);
       return wrap;
     },
+    roadClear(x, z, margin) {
+      // true when x,z is at least margin away from every road's asphalt edge
+      for (const p of Cairo.paths) {
+        const hw = p.width / 2;
+        for (let i = 1; i < p.pts.length; i++) {
+          const x0 = p.pts[i - 1][0], z0 = p.pts[i - 1][1], x1 = p.pts[i][0], z1 = p.pts[i][1];
+          const dx = x1 - x0, dz = z1 - z0;
+          const L2 = dx * dx + dz * dz;
+          let t = L2 ? ((x - x0) * dx + (z - z0) * dz) / L2 : 0;
+          t = Math.max(0, Math.min(1, t));
+          const d = Math.hypot(x - (x0 + dx * t), z - (z0 + dz * t));
+          if (d - hw < margin) return false;
+        }
+      }
+      return true;
+    },
     blocked(x, z, pad) {
       for (const c of World.colliders) {
         if (x > c.minX - pad && x < c.maxX + pad && z > c.minZ - pad && z < c.maxZ + pad) return true;
@@ -576,7 +592,7 @@
           const side = (Math.floor(s / 22) % 2) ? 1 : -1;
           const at = Cairo.at(p, s);
           const x = at.x - at.dz * off * side, z = at.z + at.dx * off * side;
-          if (Props.blocked(x, z, 0.8)) continue;
+          if (Props.blocked(x, z, 0.8) || !Props.roadClear(x, z, 0.35)) continue;
           const key = (p.r >= 2 && Math.random() > 0.5) ? 'lamp2' : 'lamp1';
           const lamp = Props.place(key, 5.2);
           if (!lamp) break;
@@ -590,7 +606,7 @@
           const side = (Math.floor(s / 34) % 2) ? -1 : 1;
           const at = Cairo.at(p, s + jitter(6));
           const x = at.x - at.dz * (off + 1.6) * side + jitter(1), z = at.z + at.dx * (off + 1.6) * side + jitter(1);
-          if (Props.blocked(x, z, 0.8)) continue;
+          if (Props.blocked(x, z, 0.8) || !Props.roadClear(x, z, 0.35)) continue;
           const palm = Props.place('palm' + (1 + Math.floor(Math.random() * 4)), 5.5 + Math.random() * 2.5);
           if (!palm) break;
           palm.position.x += x; palm.position.z += z;
@@ -611,7 +627,7 @@
         const near = ends.filter((o) => Math.hypot(o.x - e.x, o.z - e.z) < 4);
         if (near.length < 2) continue;
         const x = e.x + jitter(2), z = e.z + jitter(2);
-        if (Props.blocked(x, z, 1.0)) continue;
+        if (Props.blocked(x, z, 1.0) || !Props.roadClear(x, z, 0.35)) continue;
         const key = Math.random() > 0.45 ? 'traffic' : 'stopsign';
         const sign = Props.place(key, key === 'traffic' ? 4.4 : 2.7);
         if (!sign) break;
