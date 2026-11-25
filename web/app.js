@@ -1154,7 +1154,8 @@ function renderAbout() {
       <p style="color:var(--gold);font-weight:900;letter-spacing:2px;line-height:2">NILORA — BUILT TO BE INDEPENDENT.<br/>CONNECTED TO THE REAL WORLD.<br/>THE WORLD CONNECTS THROUGH NILORA.</p>
       <p class="cards-sub">Created &amp; Founded by Mohamed Mostafa Taher.</p>
       <p class="cards-sub">${i18n.aboutVersion}</p>
-      <p class="cards-sub">OpenStreetMap · Open-Meteo · USGS · Aladhan · Wikipedia · Nager.Date · open.er-api.com · Natural Earth</p>
+      <p class="cards-sub">Weather: Open-Meteo.com (CC BY 4.0) · Prayer times: Aladhan.com · Earthquakes: USGS · Holidays: Nager.Date · FX: open.er-api.com · Summaries: Wikipedia (CC BY-SA 3.0) · Map: © OpenStreetMap contributors · Globe: Natural Earth · Libraries: Leaflet (BSD-2), Three.js (MIT), topojson-client (ISC)</p>
+      <p class="cards-sub"><a href="https://github.com/mohamedostafataher-spec/NILOTA/blob/main/docs/DATA-SOURCES.md" target="_blank" rel="noopener" style="color:var(--gold)">Data sources &amp; licenses</a> · <a href="https://github.com/mohamedostafataher-spec/NILOTA/blob/main/docs/TESTER-CHECKLIST-AR.md" target="_blank" rel="noopener" style="color:var(--gold)">دليل المختبر</a></p>
     </div>`;
 }
 
