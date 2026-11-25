@@ -73,9 +73,23 @@ L.forEach(function(l){$('lang').add(new Option(l[1],l[0]))});$('lang').value=loc
 function code(c){for(var i=0;i<L.length;i++)if(L[i][0]===c)return L[i][2]}
 function show(id){['setup','wait','live'].forEach(function(x){var e=$(x);e.hidden=x!==id;if(x==='live')e.style.display=x===id?'flex':'none'})}
 var es,topic,myId=Math.random().toString(36).slice(2,10),stream,rec,recOn=false,speaking=false,myLang,theirLang,alive=false,linked=false,micOk=false;
-var API=function(from,to,q){return fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(q)+'&langpair='+from+'|'+to).then(function(r){return r.json()}).then(function(j){var t=j&&j.responseData&&j.responseData.translatedText;if(!t||/MYMEMORY WARNING/i.test(t))throw 0;return t.replace(/&#39;/g,"'").replace(/&quot;/g,'"')})};
+var EG=[['لا أعرف','معرفش'],['لا أفهم','مش فاهم'],['لا يوجد','مفيش'],['لا أستطيع','مش قادر'],['من فضلك','لو سمحت'],['من فضلك','لو سمحت'],['ماذا','إيه'],['أين','فين'],['كيف','إزاي'],['لماذا','ليه'],['متى','إمتى'],['كم','كام'],['بكم','بكام'],['الآن','دلوقتي'],['أريد','عايز'],['أرغب في','عايز'],['أود','عايز'],['نريد','عايزين'],['هذا','ده'],['هذه','دي'],['هؤلاء','دول'],['الذي','اللي'],['التي','اللي'],['ليس','مش'],['لست','مش'],['ليست','مش'],['جدا','أوي'],['جداً','أوي'],['كثيرا','كتير'],['كثير','كتير'],['نعم','أيوه'],['ماء','مية'],['الماء','المية'],['المرحاض','الحمّام'],['دورة المياه','الحمّام'],['الآن','دلوقتي'],['غدا','بكرة'],['غداً','بكرة'],['اليوم','النهاردة'],['أنا أحتاج','أنا محتاج'],['أحتاج','محتاج'],['تريد','عايز'],['يمكنني','أقدر'],['يمكنك','تقدر'],['هل يمكنك','ممكن'],['هل يمكن','ممكن'],['ماذا تريد','عايز إيه'],['شيء','حاجة'],['أي شيء','أي حاجة'],['الان','دلوقتي'],['أيضا','كمان'],['أيضاً','كمان'],['فقط','بس'],['لكن','بس'],['حسنا','تمام'],['حسناً','تمام'],['جيد','كويس'],['رائع','جميل'],['سيارة الأجرة','التاكسي'],['حافلة','أوتوبيس'],['قطار الأنفاق','المترو'],['الطبيب','الدكتور'],['طبيب','دكتور'],['الشرطة','الشرطة'],['منزل','بيت'],['المنزل','البيت'],['ذهب','راح'],['أذهب','أروح'],['سأذهب','هروح'],['إلى أين','رايح فين'],['ماذا حدث','إيه اللي حصل'],['مرحبا','أهلاً'],['مرحباً','أهلاً'],['شكرا','شكراً'],['أنت','إنت'],['أنتِ','إنتي'],['نحن','إحنا'],['لديك','عندك'],['لدي','عندي'],['لديه','عنده'],['لدينا','عندنا'],['أمامي','قدامي'],['الآن','دلوقتي']]
+EG.sort(function(a,b){return b[0].length-a[0].length});
+function egy(t){if(!t)return t;t=t.replace(/(^|[\s،؟?.!,])هل\s+(?!يمكن)/g,'$1');
+ var d='(^|[\\s،؟?.!,])',e='(?=$|[\\s،؟?.!,])';
+ EG.forEach(function(p){try{t=t.replace(new RegExp(d+p[0].trim().replace(/ /g,'\\s+')+e,'g'),function(m,a){return a+p[1]})}catch(x){}});
+ t=t.replace(/(^|\s)سوف\s+أ/g,'$1ه').replace(/(^|\s)سوف\s+/g,'$1ه');
+ return t}
+var egOn=localStorage.getItem('nl.eg')!=='off';
+var arVoice=null;
+function pickVoice(){var vs=(window.speechSynthesis&&speechSynthesis.getVoices())||[];var a=vs.filter(function(v){return /^ar/i.test(v.lang)});
+ arVoice=a.filter(function(v){return /EG/i.test(v.lang.replace('_','-'))})[0]||null;arVoiceAny=a[0]||null;return arVoice}
+var arVoiceAny=null;
+if(window.speechSynthesis){speechSynthesis.onvoiceschanged=pickVoice;pickVoice()}
+
+var API=function(from,to,q){return fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(q)+'&langpair='+from+'|'+to).then(function(r){return r.json()}).then(function(j){var t=j&&j.responseData&&j.responseData.translatedText;if(!t||/MYMEMORY WARNING/i.test(t))throw 0;t=t.replace(/&#39;/g,"'").replace(/&quot;/g,'"');return(to==='ar'&&egOn)?egy(t):t})};
 function add(who,text,sub){var d=document.createElement('div');d.className='m'+(who==='me'?' me':'');var t=document.createElement('div');t.className='t';t.textContent=text;t.dir='auto';d.appendChild(t);if(sub){var s=document.createElement('small');s.textContent=sub;s.dir='auto';d.appendChild(s)}$('log').appendChild(d);$('log').scrollTop=1e9}
-var ttsOn=true;function speak(t,lang){if(!ttsOn||!window.speechSynthesis){return}var u=new SpeechSynthesisUtterance(t);u.lang=code(lang);speaking=true;u.onend=u.onerror=function(){setTimeout(function(){speaking=false},400)};speechSynthesis.speak(u)}
+var ttsOn=true;function speak(t,lang){if(!ttsOn||!window.speechSynthesis){return}var u=new SpeechSynthesisUtterance(t);u.lang=code(lang);if(lang==='ar'){pickVoice();var vv=arVoice||arVoiceAny;if(vv){u.voice=vv;u.lang=vv.lang}}speaking=true;u.onend=u.onerror=function(){setTimeout(function(){speaking=false},400)};speechSynthesis.speak(u)}
 function mkcode(){var a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',s='';var r=new Uint8Array(8);crypto.getRandomValues(r);for(var i=0;i<8;i++)s+=a[r[i]%a.length];return s}
 function pub(o){o.id=myId;return fetch('https://ntfy.sh/'+topic,{method:'POST',headers:{'Cache':'no'},body:JSON.stringify(o)}).catch(function(){})}
 function open_(c){topic='nilora-call-'+c.toLowerCase();alive=true;
