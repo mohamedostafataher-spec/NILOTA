@@ -755,7 +755,7 @@
       if (THREE.EffectComposer && THREE.RenderPass && THREE.UnrealBloomPass) {
         const composer = new THREE.EffectComposer(renderer);
         composer.addPass(new THREE.RenderPass(scene, camera));
-        const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(1, 1), 0.45, 0.7, 0.82);
+        const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(1, 1), 0.22, 0.45, 0.92);
         composer.addPass(bloom);
         Game.composer = composer;
       }
