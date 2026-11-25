@@ -1236,7 +1236,7 @@
       const mag = Math.hypot(mv.x, mv.z);
       if (mag > 0.05) {
         const ang = Math.atan2(mv.x, mv.z) + camYaw;
-        Player.heading = ang;
+        if (Player.facing === undefined) Player.facing = ang;
         const speed = mv.run ? Player.SPEED_RUN : Player.SPEED_WALK;
         const nx = Player.x + Math.sin(ang) * speed * mag * dt;
         const nz = Player.z + Math.cos(ang) * speed * mag * dt;
@@ -1258,7 +1258,11 @@
       Player.y += Player.vy * dt;
       if (Player.y <= 0) { Player.y = 0; Player.vy = 0; Player.grounded = true; }
       Player.mesh.position.set(Player.x, Player.y, Player.z);
-      Player.mesh.rotation.y = Player.heading;
+      if (mag > 0.05) {
+        let d = Player.heading - Player.facing; d = Math.atan2(Math.sin(d), Math.cos(d));
+        Player.facing += d * Math.min(1, dt * 12);
+      }
+      Player.mesh.rotation.y = Player.facing === undefined ? Player.heading : Player.facing;
       return mag;
     },
   };
@@ -1271,7 +1275,7 @@
       let dragging = false, px = 0, py = 0;
       cv.addEventListener('pointerdown', (e) => {
         if (e.target !== cv) return;
-        dragging = true; px = e.clientX; py = e.clientY; cv.setPointerCapture(e.pointerId);
+        FollowCam.dragging = true; dragging = true; px = e.clientX; py = e.clientY; cv.setPointerCapture(e.pointerId);
       });
       cv.addEventListener('pointermove', (e) => {
         if (!dragging) return;
@@ -1279,8 +1283,8 @@
         FollowCam.pitch = Math.max(0.1, Math.min(1.2, FollowCam.pitch + (e.clientY - py) * 0.004));
         px = e.clientX; py = e.clientY;
       });
-      cv.addEventListener('pointerup', () => { dragging = false; });
-      cv.addEventListener('pointercancel', () => { dragging = false; });
+      cv.addEventListener('pointerup', () => { dragging = false; FollowCam.dragging = false; });
+      cv.addEventListener('pointercancel', () => { dragging = false; FollowCam.dragging = false; });
     },
     update(camera) {
       const tx = Player.x, ty = Player.y + 2, tz = Player.z;
