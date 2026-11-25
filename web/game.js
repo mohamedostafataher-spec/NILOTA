@@ -701,7 +701,7 @@
 
   /* ---------- Minimap: prerendered road layer + live player/landmark dots ---------- */
   const Minimap = {
-    S: 148, cv: null, ctx: null, base: null, t: 0, scale: 0.33,
+    S: 148, cv: null, ctx: null, base: null, t: 0, scale: 0.33, basePaths: 0,
     init(root) {
       const cv = document.createElement('canvas');
       cv.id = 'gmap';
@@ -740,9 +740,11 @@
       c.lineWidth = 2;
       c.beginPath(); c.arc(S / 2, S / 2, S / 2 - 2, 0, Math.PI * 2); c.stroke();
       Minimap.base = off;
+      Minimap.basePaths = Cairo.paths.length;
     },
     update(dt) {
       if (!Minimap.ctx || !Minimap.base) return;
+      if (Cairo.paths.length && Minimap.basePaths !== Cairo.paths.length) Minimap.buildBase();
       Minimap.t += dt;
       if (Minimap.t < 0.25) return;
       Minimap.t = 0;
