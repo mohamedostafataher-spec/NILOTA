@@ -248,8 +248,23 @@ body {
   border-radius: 12px;
 }
 .tab.active { color: var(--gold); }
-.tab-icon { font-size: 20px; }
-.tab-label { font-size: 11px; font-weight: 700; }
+.tab-icon { font-size: 22px; }
+.tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tab { position: relative; padding: 10px 0; }
+.tab-play {
+  flex: 0 0 auto;
+  width: 56px; height: 56px;
+  margin: -24px 8px 0;
+  padding: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #f4dc8e 0%, var(--gold) 55%, #9c7a22 100%);
+  color: #0B1420;
+  border: 3px solid #081426;
+  box-shadow: 0 6px 18px rgba(212,175,55,.45);
+  display: flex; align-items: center; justify-content: center;
+}
+.tab-play-icon { font-size: 26px; line-height: 1; }
+.tab-play.active { box-shadow: 0 6px 22px rgba(212,175,55,.7); }
 
 /* Live map */
 #map {
