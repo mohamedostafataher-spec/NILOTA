@@ -114,7 +114,7 @@ OSM ODbL (attributed) · Open-Meteo CC BY 4.0 · USGS/Aladhan/Nager/open.er-api 
 
 ## Roadmap backlog - Mohamed's differentiating features (Nov 25, priority order TBD by Mohamed)
 1. Voice calls with instant translation (honest note: needs external infra - WebRTC signaling + translation API; a free in-browser Web Speech API demo is the keyless fallback).
-2. Message-in-a-bottle on the real map: throw a bottle in the Nile, a random player worldwide picks it up and replies (Bottled's core mechanic; real cross-player delivery needs a backend - keyless version can be local/sample only).
+2. REJECTED by Mohamed (too close to Bottled): message-in-a-bottle on the real map. Replacement candidate awaiting his confirmation: a traveling postcard passed player to player around the world, each adding their country's stamp until it returns home (real cross-player handoff needs a backend - keyless version can be local/sample only).
 3. Egyptian passport with a Golden Scarab stamp per discovered city.
 4. Egyptian-Arabic-first identity across the product.
 5. Weekly player challenges on the Egypt map.
