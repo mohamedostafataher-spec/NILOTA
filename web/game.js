@@ -477,6 +477,27 @@
         o.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0, skinning: !!o.isSkinnedMesh });
       });
     },
+    addFace(root, pal, n) {
+      let head = null; root.traverse((o) => { if (o.name === 'Head') head = o; });
+      if (!head) return;
+      const hairCols = [0x1a1210, 0x2b1b12, 0x0f0f0f, 0x3a2616, 0x1a1210];
+      const hairMat = new THREE.MeshStandardMaterial({ color: hairCols[n % hairCols.length], roughness: 0.9 });
+      const female = n % 2 === 0;
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.118, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.62), hairMat);
+      hair.position.set(0, 0.085, -0.012); hair.scale.set(1, 1.02, 1.08); hair.castShadow = true;
+      head.add(hair);
+      if (female) {
+        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.05, 0.26, 10), hairMat);
+        tail.position.set(0, 0.0, -0.11); head.add(tail);
+      }
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x14100d });
+      [-0.037, 0.037].forEach((x) => {
+        const e = new THREE.Mesh(new THREE.SphereGeometry(0.0095, 8, 6), eyeMat);
+        e.position.set(x, 0.09, 0.098); head.add(e);
+      });
+      const nose = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), new THREE.MeshStandardMaterial({ color: pal.skin, roughness: 0.8 }));
+      nose.position.set(0, 0.062, 0.108); head.add(nose);
+    },
     load(key) {
       if (Assets.UAL_OK !== false) {
         return Assets.loadUal(key).then((ok) => { if (ok) return true; Assets.UAL_OK = false; return Assets.loadKay(key); });
@@ -507,7 +528,11 @@
       const src = Assets.lib[key];
       if (!src) return null;
       const m = THREE.SkeletonUtils.clone(src.scene);
-      if (Assets.isUal) { Assets.tint(m, Assets.PALETTES[(Assets.nTint++) % Assets.PALETTES.length]); }
+      if (Assets.isUal) {
+        const pal = Assets.PALETTES[(Assets.nTint++) % Assets.PALETTES.length];
+        Assets.tint(m, pal);
+        Assets.addFace(m, pal, Assets.nTint);
+      }
       return m;
     },
     anims(key) { return Assets.lib[key] ? Assets.lib[key].animations : []; },
