@@ -166,6 +166,69 @@
     },
   };
 
+  /* ---------- Vehicles: ambient street traffic (non-drivable) ---------- */
+  const Vehicles = {
+    cars: [],
+    build(scene) {
+      const half = CITY.size / 2, step = CITY.block + CITY.road;
+      const lanes = [];
+      for (let p = -half + step / 2; p < half; p += step) lanes.push(p);
+      const colors = [0xb03a2e, 0x2e5fa3, 0xd4af37, 0x6e7b8a, 0x3d8b6e];
+      let seed = 7;
+      const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+      for (let i = 0; i < 14; i++) {
+        const horizontal = rnd() > 0.5;
+        const lane = lanes[Math.floor(rnd() * lanes.length)] + (rnd() > 0.5 ? 2.5 : -2.5);
+        const car = new THREE.Mesh(
+          new THREE.BoxGeometry(3.4, 1.2, 1.7),
+          new THREE.MeshLambertMaterial({ color: colors[Math.floor(rnd() * colors.length)] }));
+        car.position.y = 0.6;
+        scene.add(car);
+        Vehicles.cars.push({
+          mesh: car, horizontal, lane,
+          pos: (rnd() - 0.5) * CITY.size,
+          speed: (8 + rnd() * 7) * (rnd() > 0.5 ? 1 : -1),
+        });
+      }
+    },
+    update(dt) {
+      const lim = CITY.size / 2 + 6;
+      Vehicles.cars.forEach((c) => {
+        c.pos += c.speed * dt;
+        if (c.pos > lim) c.pos = -lim;
+        if (c.pos < -lim) c.pos = lim;
+        if (c.horizontal) {
+          c.mesh.position.set(c.pos, 0.6, c.lane);
+          c.mesh.rotation.y = c.speed > 0 ? Math.PI / 2 : -Math.PI / 2;
+        } else {
+          c.mesh.position.set(c.lane, 0.6, c.pos);
+          c.mesh.rotation.y = c.speed > 0 ? 0 : Math.PI;
+        }
+      });
+    },
+  };
+
+  /* ---------- Audio: tiny WebAudio ambience, off until toggled ---------- */
+  const Audio8 = {
+    ctx: null, on: false, nodes: null,
+    toggle(btn) {
+      Audio8.on = !Audio8.on;
+      btn.textContent = Audio8.on ? '🔊' : '🔇';
+      if (Audio8.on && !Audio8.ctx) {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = 82;
+          const osc2 = ctx.createOscillator(); osc2.type = 'triangle'; osc2.frequency.value = 123.5;
+          const g = ctx.createGain(); g.gain.value = 0.035;
+          osc.connect(g); osc2.connect(g); g.connect(ctx.destination);
+          osc.start(); osc2.start();
+          Audio8.ctx = ctx; Audio8.nodes = { g };
+        } catch (e) { Audio8.on = false; btn.textContent = '🔇'; }
+      }
+      if (Audio8.nodes) Audio8.nodes.g.gain.value = Audio8.on ? 0.035 : 0;
+    },
+  };
+
   /* ---------- Player: capsule, gravity, jump, collision ---------- */
   const Player = {
     mesh: null, x: 0, z: 30, y: 0, vy: 0, heading: 0, grounded: true,
@@ -282,6 +345,7 @@
         '<div id="gmission" class="gpanel"></div>' +
         '<div id="gfps" class="gpanel gfps">…</div>' +
         '<button id="gquality" class="gpanel gbtn" type="button">HQ</button>' +
+        '<button id="gsound" class="gpanel gbtn" type="button" style="top:calc(52px + env(safe-area-inset-top));right:64px">🔇</button>' +
         '<button id="gexit" class="gpanel gbtn" type="button">✕</button>' +
         '<div id="gtoast"></div>' +
         '<div id="gjoy"><div id="gjoyKnob"></div></div>' +
@@ -293,6 +357,7 @@
         toast: wrap.querySelector('#gtoast'),
       };
       HUD.el.exit.addEventListener('click', () => { location.hash = '#/explore'; });
+      wrap.querySelector('#gsound').addEventListener('click', (e) => Audio8.toggle(e.currentTarget));
       HUD.el.quality.addEventListener('click', () => {
         Game.hq = !Game.hq;
         HUD.el.quality.textContent = Game.hq ? 'HQ' : 'LQ';
@@ -369,6 +434,7 @@
 
       World.colliders = []; World.landmarks = [];
       World.build(scene);
+      Vehicles.cars = []; Vehicles.build(scene);
       Player.build(scene);
       HUD.mount(host);
       Input.init(host);
@@ -398,6 +464,7 @@
         Game.last = now;
         if (!document.hidden) {
           Player.update(dt, FollowCam.yaw);
+          Vehicles.update(dt);
           FollowCam.update(camera);
           Mission.update();
           renderer.render(scene, camera);
@@ -445,5 +512,11 @@
     },
   };
 
-  window.NiloraGame = { start: Game.start.bind(Game), stop: Game.stop.bind(Game) };
+  window.NiloraGame = {
+    start: Game.start.bind(Game), stop: Game.stop.bind(Game),
+    debug: () => ({ x: Player.x, y: Player.y, z: Player.z, grounded: Player.grounded,
+      found: Mission.foundCount(), cars: Vehicles.cars.length,
+      collides: (x, z) => World.hit(x, z),
+      tp: (x, z) => { Player.x = x; Player.z = z; } }),
+  };
 })();
