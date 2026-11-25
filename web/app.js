@@ -1207,7 +1207,7 @@ function render() {
   updateHud();
   const TAB_OF = { home: 'home', explore: 'explore', map: 'explore', globe: 'explore', travel: 'explore', cards: 'explore',
     passport: 'passport', challenges: 'challenges', events: 'challenges',
-    journey: 'journey', memory: 'journey', saved: 'journey', about: 'journey', souk: 'journey', game: 'explore' };
+    journey: 'journey', memory: 'journey', saved: 'journey', about: 'journey', souk: 'journey', game: 'game' };
   const activeTab = TAB_OF[route] || 'home';
   document.querySelectorAll('.tab').forEach(tab =>
     tab.classList.toggle('active', tab.dataset.route === activeTab));
